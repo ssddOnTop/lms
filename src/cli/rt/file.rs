@@ -83,7 +83,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_error() {
         // Attempt to read from a non-existent file
-        let file_io = NativeFileIO::default();
+        let file_io = super::super::init().file;
         let result = file_io.read("/non/existent/file.txt").await;
 
         // Verify that an error is returned
