@@ -1,3 +1,5 @@
+#[allow(unused)]
+
 use crate::config::Config;
 use reqwest::Url;
 use crate::runtime::TargetRuntime;
