@@ -1,6 +1,7 @@
 use anyhow::Result;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use totp_rs::TOTP;
 
@@ -15,16 +16,16 @@ pub fn verify_totp(totp: &TOTP, code: &str) -> Result<bool> {
 }
 
 pub fn encrypt_aes(key: &[u8], data: &str) -> Result<String> {
-    let key: &[u8; 16] = key.try_into()?;
-    let cipher = libaes::Cipher::new_128(key);
+    let key: &[u8; 32] = key.try_into()?;
+    let cipher = libaes::Cipher::new_256(key);
     let encrypted = cipher.cbc_encrypt(&IV, data.as_bytes());
     let encrypted = BASE64_STANDARD.encode(encrypted);
     Ok(encrypted)
 }
 
 pub fn decrypt_aes<T: AsRef<[u8]>>(key: &[u8], data: T) -> Result<String> {
-    let key: &[u8; 16] = key.try_into()?;
-    let cipher = libaes::Cipher::new_128(key);
+    let key: &[u8; 32] = key.try_into()?;
+    let cipher = libaes::Cipher::new_256(key);
     let data = BASE64_STANDARD.decode(data.as_ref())?;
     let decrypted = cipher.cbc_decrypt(&IV, &data);
     Ok(String::from_utf8(decrypted)?)
@@ -38,6 +39,14 @@ pub fn hash_256<T: AsRef<str>>(data: T) -> String {
     hex::encode(data)
 }
 
+pub fn hash_128<T: AsRef<str>>(data: T) -> String {
+    let mut hasher = Sha1::new();
+    hasher.update(data.as_ref().as_bytes());
+    let data = hasher.finalize();
+
+    hex::encode(data)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -45,7 +54,7 @@ mod tests {
 
     #[test]
     fn test_encrypt_decrypt() {
-        let key = [1; 16];
+        let key = [1; 32];
         let data = "hello world";
         let encrypted = encrypt_aes(&key, data).unwrap();
         let decrypted = decrypt_aes(&key, encrypted).unwrap();

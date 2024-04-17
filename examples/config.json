@@ -1,6 +1,9 @@
 {
   "$schema": "../generated/.lmsrc.schema.json",
-  "port": 19194,
+  "server": {
+    "port": 19194,
+    "host": "0.0.0.0"
+  },
   "auth": {
     "auth_url": "http://localhost:19191/auth",
     "totp": {

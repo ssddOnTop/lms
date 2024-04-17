@@ -1,12 +1,13 @@
 use crate::is_default;
 use anyhow::{anyhow, Context, Result};
-use libaes::AES_128_KEY_LEN;
+use libaes::AES_256_KEY_LEN;
 use serde::{Deserialize, Serialize};
 use totp_rs::TOTP;
 use url::Url;
 
 use crate::local_crypto::{decrypt_aes, encrypt_aes, gen_totp, hash_256};
 
+#[derive(Debug, Clone)]
 pub struct AuthProvider {
     auth_db_url: Url,
     totp: TOTP,
@@ -72,7 +73,7 @@ impl AuthResult {
 
 impl AuthProvider {
     pub fn init(auth_db_url: String, totp: TOTP, aes_key: String) -> Result<AuthProvider> {
-        assert_eq!(aes_key.len(), AES_128_KEY_LEN, "AES key must be 16 bytes");
+        assert_eq!(aes_key.len(), AES_256_KEY_LEN, "AES key must be 16 bytes");
 
         let provider = Self {
             auth_db_url: Url::parse(&auth_db_url)?,
@@ -149,7 +150,7 @@ mod tests {
         )
         .unwrap();
 
-        let aes_key = "1234567890123456".to_string();
+        let aes_key = "12345678901234561234567890123456".to_string();
         let server_url = server.base_url();
 
         let provider = AuthProvider::init(server_url, totp, aes_key)?;

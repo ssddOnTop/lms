@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct Config {
     #[serde(default, skip_serializing_if = "is_default")]
-    pub port: Option<u16>,
+    pub server: Server,
     #[serde(default, skip_serializing_if = "is_default")]
     pub auth: AuthInfo,
 }
@@ -22,6 +22,21 @@ impl Config {
         } else {
             Ok(serde_json::to_string(self)?)
         }
+    }
+}
+#[derive(Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+pub struct Server {
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub host: Option<String>,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub port: Option<u16>,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub workers: Option<usize>,
+}
+
+impl Server {
+    pub fn get_workers(&self) -> usize {
+        self.workers.unwrap_or(num_cpus::get())
     }
 }
 
