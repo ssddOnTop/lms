@@ -14,8 +14,7 @@ This project is heavily depends on rust. In order to run it properly you have to
 
    Run the following command in the terminal
 
-   ```curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh```
-
+   `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
 2. For Windows
    Visit https://www.rust-lang.org/tools/install
@@ -24,12 +23,12 @@ This project is heavily depends on rust. In order to run it properly you have to
 
 Make sure you have git installed.
 After that paste the following into the terminal  
-```git clone https://github.com/ssddOnTop/lms.git```
+`git clone https://github.com/ssddOnTop/lms.git`
 
 After that enter the lms directory on your machine and run  
-```cargo run```
+`cargo run`
 
 This will build and run the project. To just build the project use  
-```cargo build```
+`cargo build`
 
 After this you are set to go!
