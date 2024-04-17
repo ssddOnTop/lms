@@ -3,7 +3,9 @@
   "port": 19194,
   "auth": {
     "auth_url": "http://localhost:19191/auth",
-    "totp_key": "base32encodedkey",
+    "totp": {
+      "totp_secret": "base32encodedkey"
+    },
     "aes_key": "32bytebase64encodedkey"
   }
 }

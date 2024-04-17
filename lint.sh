@@ -61,7 +61,6 @@ case $MODE in
         FMT_EXIT_CODE=$?
         run_cargo_clippy $MODE
         CLIPPY_EXIT_CODE=$?
-        popd
 
         run_prettier $MODE
         PRETTIER_EXIT_CODE=$?

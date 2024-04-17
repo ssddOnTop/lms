@@ -1,6 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
+    "Algorithm": {
+      "enum": [
+        "SHA1",
+        "Sha256",
+        "Sha512"
+      ],
+      "type": "string"
+    },
     "AuthInfo": {
       "properties": {
         "aes_key": {
@@ -9,15 +17,44 @@
         "auth_url": {
           "type": "string"
         },
-        "totp_key": {
+        "totp": {
+          "$ref": "#/definitions/TotpSettings"
+        }
+      },
+      "type": "object"
+    },
+    "TotpSettings": {
+      "properties": {
+        "algo": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Algorithm"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "digits": {
+          "format": "uint",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "period": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "totp_secret": {
           "type": "string"
         }
       },
-      "required": [
-        "aes_key",
-        "auth_url",
-        "totp_key"
-      ],
       "type": "object"
     }
   },
@@ -28,13 +65,12 @@
     "port": {
       "format": "uint16",
       "minimum": 0.0,
-      "type": "integer"
+      "type": [
+        "integer",
+        "null"
+      ]
     }
   },
-  "required": [
-    "auth",
-    "port"
-  ],
   "title": "Config",
   "type": "object"
 }

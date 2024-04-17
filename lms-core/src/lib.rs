@@ -1,9 +1,14 @@
 #![allow(clippy::module_inception)]
 #![allow(clippy::mutable_key_type)]
 
+pub mod blueprint;
 pub mod config;
 pub mod http;
 pub mod runtime;
+
+pub fn is_default<T: Default + Eq>(val: &T) -> bool {
+    *val == T::default()
+}
 
 #[async_trait::async_trait]
 pub trait HttpIO: Sync + Send + 'static {
