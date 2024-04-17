@@ -113,7 +113,7 @@ mod tests {
         let config = reader.read(example_config).await.unwrap();
         assert_eq!(config.server.port.unwrap(), 19194);
         assert_eq!(config.server.host.unwrap(), "0.0.0.0");
-        assert_eq!(config.auth.auth_url, "http://localhost:19191/auth");
+        assert_eq!(config.auth.auth_url, "http://localhost:19194/auth");
         assert_eq!(config.auth.totp.totp_secret, "base32encodedkey");
         assert_eq!(config.auth.aes_key, "32bytebase64encodedkey");
     }
