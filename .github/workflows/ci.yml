@@ -14,21 +14,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  check_if_build:
-    name: Check if Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1000
-      - id: check
-        run: |
-          chmod +x .github/scripts/check_if_build.sh
-          .github/scripts/check_if_build.sh
-    outputs:
-      check_if_build: ${{ steps.check.outputs.check_if_build }}
-
   test:
     name: Run Tests on ${{ matrix.build }}
     runs-on: ${{ matrix.os }}
@@ -107,4 +92,4 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Run Cargo Test
-        run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
