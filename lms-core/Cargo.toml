@@ -17,6 +17,7 @@ async-trait = "0.1.80"
 bytes = "1.6.0"
 derive_setters = "0.1.6"
 http-body-util = "0.1.1"
+totp-rs = "5.5.1"
 
 [dev-dependencies]
 tokio = {version = "1.37.0",features = ["macros","fs"]}
