@@ -1494,6 +1494,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "totp-rs",
+ "url",
 ]
 
 [[package]]

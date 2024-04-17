@@ -46,10 +46,11 @@ impl TryFrom<Config> for Blueprint {
 }
 
 fn validate_config(config: &Config) -> anyhow::Result<()> {
-    if config.auth.auth_url.is_empty() {
+    if url::Url::parse(&config.auth.auth_url).is_err() || !config.auth.auth_url.starts_with("http")
+    {
         return Err(anyhow::anyhow!("auth_url is required"));
     }
-    if config.auth.aes_key.is_empty() || config.auth.aes_key.len() <= 8 {
+    if config.auth.aes_key.is_empty() || config.auth.aes_key.len() < 8 {
         return Err(anyhow::anyhow!(
             "aes_key is required and must be 8 characters long"
         ));
