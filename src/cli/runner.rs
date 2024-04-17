@@ -3,11 +3,17 @@ use crate::cli::{self, rt};
 use clap::Parser;
 use lms_core::blueprint::Blueprint;
 use lms_core::config::reader::ConfigReader;
-pub async fn run() -> anyhow::Result<()> {
+use lms_core::runtime::TargetRuntime;
+
+pub async fn fork_run() -> anyhow::Result<()> {
     logger_init();
     let cli = Cli::parse();
     let runtime = rt::init();
 
+    run(cli, runtime).await
+}
+
+async fn run(cli: Cli, runtime: TargetRuntime) -> anyhow::Result<()> {
     let config_reader = ConfigReader::init(runtime.clone());
     match cli.command {
         Command::Start { config_path } => {
@@ -42,4 +48,23 @@ fn logger_init() {
     let env = env_logger::Env::new().filter_or(filter_env_name, "info");
 
     env_logger::Builder::from_env(env).init();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[tokio::test]
+    async fn test_run_check() {
+        let config_path = PathBuf::from("examples/config.json")
+            .to_str()
+            .unwrap()
+            .to_string();
+        let cli = Cli {
+            command: Command::Check { config_path },
+        };
+        let runtime = rt::init();
+        assert!(run(cli, runtime).await.is_ok())
+    }
 }
