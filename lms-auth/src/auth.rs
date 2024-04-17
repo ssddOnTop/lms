@@ -48,23 +48,23 @@ impl AuthRequest {
         let totp = gen_totp(&provider.totp)?;
         let extra_hash = hash_256(format!("{}ssdd{}{}", totp, username.as_ref(), password));
 
-        Ok(
-            Self {
-                username: username.as_ref().to_string(),
-                password,
-                signature: extra_hash,
-            }
-        )
+        Ok(Self {
+            username: username.as_ref().to_string(),
+            password,
+            signature: extra_hash,
+        })
     }
     fn into_encrypted_request(self, aes_key: &[u8]) -> Result<String> {
-        let request = encrypt_aes(aes_key, &serde_json::to_string(&self)?).map_err(|_| anyhow!("Unable to encrypt request"))?;
+        let request = encrypt_aes(aes_key, &serde_json::to_string(&self)?)
+            .map_err(|_| anyhow!("Unable to encrypt request"))?;
         Ok(request)
     }
 }
 
 impl AuthResult {
     pub fn try_from_encrypted_response(aes_key: &[u8], response: &str) -> Result<Self> {
-        let response = decrypt_aes(aes_key, response).map_err(|_|anyhow!("Unable to decrypt response"))?;
+        let response =
+            decrypt_aes(aes_key, response).map_err(|_| anyhow!("Unable to decrypt response"))?;
         let result = serde_json::from_str::<AuthResult>(&response)?;
         Ok(result)
     }
@@ -92,8 +92,8 @@ impl AuthProvider {
             .send()
             .await?;
 
-
-        let result = AuthResult::try_from_encrypted_response(&self.aes_key, &response.text().await?)?;
+        let result =
+            AuthResult::try_from_encrypted_response(&self.aes_key, &response.text().await?)?;
 
         if let Some(err) = result.error {
             return Err(anyhow::anyhow!(err.message));
@@ -105,9 +105,9 @@ impl AuthProvider {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use serde_json::json;
     use totp_rs::{Algorithm, Secret};
-    use super::*;
 
     #[test]
     fn test_deser_auth_resp() {
@@ -138,36 +138,38 @@ mod tests {
     async fn test_authenticate_success() -> Result<()> {
         let server = start_mock_server();
 
-        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, Secret::Raw("JBSWY3DPEHPK3PXP".as_bytes().to_vec()).to_bytes().unwrap()).unwrap();
+        let totp = TOTP::new(
+            Algorithm::SHA1,
+            6,
+            1,
+            30,
+            Secret::Raw("JBSWY3DPEHPK3PXP".as_bytes().to_vec())
+                .to_bytes()
+                .unwrap(),
+        )
+        .unwrap();
 
         let aes_key = "1234567890123456".to_string();
         let server_url = server.base_url();
 
-
         let provider = AuthProvider::init(server_url, totp, aes_key)?;
-
 
         let req = AuthRequest::new("user", "pass", &provider)?;
         let req = req.into_encrypted_request(&provider.aes_key)?;
         let resp_json = json!({
-                    "success": {
-                        "name": "John Doe",
-                        "token": "abcdef123456"
-                    }
-                });
+            "success": {
+                "name": "John Doe",
+                "token": "abcdef123456"
+            }
+        });
 
         let resp = encrypt_aes(&provider.aes_key, &serde_json::to_string(&resp_json)?)?;
 
-
         let m = server.mock(|when, then| {
-            when.method(httpmock::Method::POST)
-                .path("/")
-                .body(req);
+            when.method(httpmock::Method::POST).path("/").body(req);
 
-            then.status(200)
-                .body(resp);
+            then.status(200).body(resp);
         });
-
 
         let result = provider.authenticate("user", "pass").await;
 

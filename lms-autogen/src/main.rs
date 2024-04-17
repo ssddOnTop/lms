@@ -1,9 +1,9 @@
-use std::path::PathBuf;
-use std::process::exit;
 use anyhow::{anyhow, Result};
+use lms_core::config::Config;
 use schemars::schema::RootSchema;
 use serde_json::{json, Value};
-use lms_core::config::Config;
+use std::path::PathBuf;
+use std::process::exit;
 
 static JSON_SCHEMA_FILE: &str = "../generated/.lmsrc.schema.json";
 
@@ -81,7 +81,10 @@ mod tests {
     #[test]
     fn test_get_file_path() {
         let path = get_file_path();
-        assert_eq!(path, PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(JSON_SCHEMA_FILE));
+        assert_eq!(
+            path,
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(JSON_SCHEMA_FILE)
+        );
     }
 
     #[tokio::test]

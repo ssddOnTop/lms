@@ -1,7 +1,6 @@
+use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
-
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Config {
@@ -10,7 +9,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_json(json: &String) -> Result<Self> {
+    pub fn from_json(json: &str) -> Result<Self> {
         Ok(serde_json::from_str(json)?)
     }
     pub fn to_json(&self, pretty: bool) -> Result<String> {
