@@ -1,0 +1,13 @@
+{
+  "server": {
+    "port": 19194,
+    "host": "0.0.0.0"
+  },
+  "auth": {
+    "auth_url": "http://localhost:19191/auth",
+    "totp": {
+      "totp_secret": "base32encodedkey"
+    },
+    "aes_key": "32bytebase64encodedkey"
+  }
+}
