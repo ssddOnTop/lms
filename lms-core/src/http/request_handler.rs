@@ -11,26 +11,9 @@ pub async fn handle_request(
     app_ctx: Arc<AppContext>,
 ) -> Result<Response<Full<Bytes>>> {
     match *req.method() {
-        Method::POST => handle_post(req, app_ctx).await,
+        Method::POST => todo!("Should be implemented for authentication"),
         Method::GET => handle_get(req, app_ctx).await,
         _ => not_found(),
-    }
-}
-
-/// Post requests should return a json response
-async fn handle_post(
-    req: hyper::Request<hyper::body::Incoming>,
-    _app_ctx: Arc<AppContext>,
-) -> Result<Response<Full<Bytes>>> {
-    let path = req.uri().path();
-    match path {
-        "/signon" => {
-            todo!()
-        }
-        "/home" => {
-            todo!()
-        }
-        &_ => not_found(),
     }
 }
 
@@ -41,12 +24,6 @@ async fn handle_get(
 ) -> Result<Response<Full<Bytes>>> {
     let path = req.uri().path();
     match path {
-        "/signon" => {
-            todo!()
-        }
-        "/" | "/home" => {
-            todo!()
-        }
         &_ => not_found(),
     }
 }
