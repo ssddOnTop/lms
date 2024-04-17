@@ -1,4 +1,4 @@
-workspace = { members = [ "lms-auth","lms-core"] }
+workspace = { members = [ "lms-auth", "lms-autogen","lms-core"] }
 [package]
 name = "lms"
 version = "0.1.0"

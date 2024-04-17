@@ -1,0 +1,15 @@
+[package]
+name = "lms-autogen"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+schemars = {version = "0.8.16",features = ["derive"]}
+lms-core = { path = "../lms-core" }
+tokio = { version = "1.37.0", features = ["full"] }
+log = "0.4.21"
+anyhow = "1.0.82"
+serde_json = "1.0.116"
+env_logger = "0.11.3"
