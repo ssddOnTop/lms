@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AuthInfo": {
+      "properties": {
+        "aes_key": {
+          "type": "string"
+        },
+        "auth_url": {
+          "type": "string"
+        },
+        "totp_key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "aes_key",
+        "auth_url",
+        "totp_key"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "auth": {
+      "$ref": "#/definitions/AuthInfo"
+    },
+    "port": {
+      "format": "uint16",
+      "minimum": 0.0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "auth",
+    "port"
+  ],
+  "title": "Config",
+  "type": "object"
+}

@@ -1,4 +1,5 @@
 {
+  "$schema": "../generated/.lmsrc.schema.json",
   "port": 19194,
   "auth": {
     "auth_url": "http://localhost:19191/auth",
