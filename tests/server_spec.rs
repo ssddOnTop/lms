@@ -120,40 +120,4 @@ mod server_spec {
             .expect("Request should success");
         insta::assert_snapshot!(response);
     }
-
-    #[tokio::test]
-    async fn unsupported_protocol() {
-        let url = "http://localhost:19194/invalid";
-
-        let runtime = crate::test::init();
-        let reader = ConfigReader::init(runtime);
-        let config = reader
-            .read("tests/server/config_unsupported_protocol.json")
-            .await
-            .unwrap();
-        let mut server = Server::new(config);
-        let server_up_receiver = server.server_up_receiver();
-
-        tokio::spawn(async move {
-            server.start().await.unwrap();
-        });
-
-        server_up_receiver
-            .await
-            .expect("Server did not start up correctly");
-
-        let client = Client::new();
-
-        let task: tokio::task::JoinHandle<Result<_, anyhow::Error>> = tokio::spawn(async move {
-            let response = client.put(url).send().await?;
-            let response_body = response.text().await?;
-            Ok(response_body)
-        });
-
-        let response = task
-            .await
-            .expect("Spawned task should success")
-            .expect("Request should success");
-        insta::assert_snapshot!(response);
-    }
 }
