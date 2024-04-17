@@ -34,7 +34,7 @@ impl ConfigReader {
                 .http
                 .execute(
                     reqwest::Request::new(reqwest::Method::GET, url),
-                ) // reading config should not require key
+                )
                 .await?;
 
             String::from_utf8(response.body.to_vec())?
@@ -44,7 +44,7 @@ impl ConfigReader {
             self.runtime
                 .file
                 .read(file.as_ref())
-                .await? // reading config should not require key
+                .await?
         };
 
         Ok(FileRead {
@@ -58,6 +58,10 @@ impl ConfigReader {
 mod tests {
     use std::path::PathBuf;
     use super::*;
+
+    fn start_mock_server() -> httpmock::MockServer {
+        httpmock::MockServer::start()
+    }
 
     fn get_example_config() -> String {
         let mut parent = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -76,6 +80,26 @@ mod tests {
         let file = reader.read_file(&example_config).await.unwrap();
 
         assert_eq!(file.path, example_config);
+    }
+
+    #[tokio::test]
+    async fn test_read_from_url() {
+        let runtime = crate::runtime::tests::init();
+        let reader = ConfigReader::init(runtime);
+        let expected = reader.read_file(get_example_config()).await.unwrap();
+
+        let server = start_mock_server();
+
+        server.mock(|when, then| {
+            when.method(httpmock::Method::GET)
+                .path("/config.json");
+            then.status(200)
+                .body(expected.content.clone());
+        });
+
+        let actual = reader.read_file(format!("{}/config.json", server.base_url())).await.unwrap();
+
+        assert_eq!(expected.content, actual.content);
     }
 
     #[tokio::test]
