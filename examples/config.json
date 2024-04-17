@@ -4,7 +4,7 @@
   "auth": {
     "auth_url": "http://localhost:19191/auth",
     "totp": {
-      "totp_key": "base32encodedkey"
+      "totp_secret": "base32encodedkey"
     },
     "aes_key": "32bytebase64encodedkey"
   }

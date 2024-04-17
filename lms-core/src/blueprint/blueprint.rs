@@ -19,7 +19,7 @@ impl TryFrom<Config> for Blueprint {
             config.auth.totp.digits.unwrap_or(6),
             1,
             config.auth.totp.period.unwrap_or(30),
-            Secret::Raw(config.auth.totp.totp_secret_key.as_bytes().to_vec()).to_bytes()?,
+            Secret::Raw(config.auth.totp.totp_secret.as_bytes().to_vec()).to_bytes()?,
         )?;
 
         let auth = AuthProvider::init(config.auth.auth_url, totp, config.auth.aes_key)?;
@@ -36,7 +36,7 @@ fn validate_config(config: &Config) -> anyhow::Result<()> {
             "aes_key is required and must be 16 bytes long"
         ));
     }
-    if config.auth.totp.totp_secret_key.is_empty() || config.auth.totp.totp_secret_key.len() < 16 {
+    if config.auth.totp.totp_secret.is_empty() || config.auth.totp.totp_secret.len() < 16 {
         return Err(anyhow::anyhow!(
             "totp_key is required and must be at least 16 bytes long"
         ));

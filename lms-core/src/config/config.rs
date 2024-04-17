@@ -38,7 +38,7 @@ pub struct AuthInfo {
 #[derive(Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct TotpSettings {
     #[serde(default, skip_serializing_if = "is_default")]
-    pub totp_secret_key: String,
+    pub totp_secret: String,
     #[serde(default, skip_serializing_if = "is_default")]
     pub algo: Option<Algorithm>,
     #[serde(default, skip_serializing_if = "is_default")]

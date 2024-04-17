@@ -51,7 +51,7 @@
             "null"
           ]
         },
-        "totp_secret_key": {
+        "totp_secret": {
           "type": "string"
         }
       },
