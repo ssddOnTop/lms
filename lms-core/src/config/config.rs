@@ -4,6 +4,8 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+// TODO: ADD DOCS!!
+
 #[derive(Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct Config {
     #[serde(default, skip_serializing_if = "is_default")]
