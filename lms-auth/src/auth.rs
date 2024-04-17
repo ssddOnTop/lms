@@ -17,7 +17,7 @@ pub struct AuthProvider {
 struct AuthRequest {
     username: String,
     password: String,
-    extra_hash: String,
+    signature: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,7 +52,7 @@ impl AuthRequest {
             Self {
                 username: username.as_ref().to_string(),
                 password,
-                extra_hash,
+                signature: extra_hash,
             }
         )
     }
