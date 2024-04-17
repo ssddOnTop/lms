@@ -58,7 +58,7 @@ jobs:
           - build: darwin-x64
             os: macos-latest
             target: x86_64-apple-darwin
-  steps:
+    steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@cargo-llvm-cov
 
