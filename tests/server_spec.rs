@@ -91,7 +91,10 @@ mod server_spec {
 
         let runtime = crate::test::init();
         let reader = ConfigReader::init(runtime);
-        let config = reader.read("tests/server/config_notfound.json").await.unwrap();
+        let config = reader
+            .read("tests/server/config_notfound.json")
+            .await
+            .unwrap();
         let mut server = Server::new(config);
         let server_up_receiver = server.server_up_receiver();
 
@@ -124,7 +127,10 @@ mod server_spec {
 
         let runtime = crate::test::init();
         let reader = ConfigReader::init(runtime);
-        let config = reader.read("tests/server/config_unsupported_protocol.json").await.unwrap();
+        let config = reader
+            .read("tests/server/config_unsupported_protocol.json")
+            .await
+            .unwrap();
         let mut server = Server::new(config);
         let server_up_receiver = server.server_up_receiver();
 
