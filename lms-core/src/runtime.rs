@@ -23,9 +23,9 @@ pub mod tests {
     use reqwest::Client;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+    use crate::http::response::Response;
     use crate::runtime::TargetRuntime;
     use crate::{FileIO, HttpIO};
-    use crate::http::response::Response;
 
     #[derive(Default)]
     struct TestHttp {
@@ -47,7 +47,7 @@ pub mod tests {
                     .error_for_status()
                     .map_err(|err| err.without_url())?,
             )
-                .await
+            .await
         }
     }
 

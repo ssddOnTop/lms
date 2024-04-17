@@ -1,8 +1,8 @@
 #![allow(unused)]
 
 use crate::config::Config;
-use reqwest::Url;
 use crate::runtime::TargetRuntime;
+use reqwest::Url;
 
 /// Reads the configuration from a file or from an HTTP URL and resolves all linked extensions to create a ConfigModule.
 pub struct ConfigReader {
@@ -34,19 +34,14 @@ impl ConfigReader {
             let response = self
                 .runtime
                 .http
-                .execute(
-                    reqwest::Request::new(reqwest::Method::GET, url),
-                )
+                .execute(reqwest::Request::new(reqwest::Method::GET, url))
                 .await?;
 
             String::from_utf8(response.body.to_vec())?
         } else {
             // Is a file path
 
-            self.runtime
-                .file
-                .read(file.as_ref())
-                .await?
+            self.runtime.file.read(file.as_ref()).await?
         };
 
         Ok(FileRead {
@@ -58,8 +53,8 @@ impl ConfigReader {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
     use super::*;
+    use std::path::PathBuf;
 
     fn start_mock_server() -> httpmock::MockServer {
         httpmock::MockServer::start()
@@ -69,7 +64,11 @@ mod tests {
         let mut parent = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         parent.pop();
 
-        parent.join("examples/config.json").to_str().unwrap().to_string()
+        parent
+            .join("examples/config.json")
+            .to_str()
+            .unwrap()
+            .to_string()
     }
 
     #[tokio::test]
@@ -93,13 +92,14 @@ mod tests {
         let server = start_mock_server();
 
         server.mock(|when, then| {
-            when.method(httpmock::Method::GET)
-                .path("/config.json");
-            then.status(200)
-                .body(expected.content.as_str());
+            when.method(httpmock::Method::GET).path("/config.json");
+            then.status(200).body(expected.content.as_str());
         });
 
-        let actual = reader.read_file(format!("{}/config.json", server.base_url())).await.unwrap();
+        let actual = reader
+            .read_file(format!("{}/config.json", server.base_url()))
+            .await
+            .unwrap();
 
         assert_eq!(expected.content, actual.content);
     }
@@ -110,10 +110,7 @@ mod tests {
         let reader = ConfigReader::init(runtime);
         let example_config = get_example_config();
 
-        let config = reader
-            .read(example_config)
-            .await
-            .unwrap();
+        let config = reader.read(example_config).await.unwrap();
         assert_eq!(config.port, 19194);
         assert_eq!(config.auth.auth_url, "http://localhost:19191/auth");
         assert_eq!(config.auth.totp_key, "base32encodedkey");

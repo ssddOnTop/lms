@@ -2,8 +2,8 @@
 #![allow(clippy::mutable_key_type)]
 
 pub mod config;
-pub mod runtime;
 pub mod http;
+pub mod runtime;
 
 #[async_trait::async_trait]
 pub trait HttpIO: Sync + Send + 'static {
@@ -15,10 +15,6 @@ pub trait HttpIO: Sync + Send + 'static {
 
 #[async_trait::async_trait]
 pub trait FileIO: Send + Sync {
-    async fn write<'a>(
-        &'a self,
-        path: &'a str,
-        content: &'a [u8],
-    ) -> anyhow::Result<()>;
+    async fn write<'a>(&'a self, path: &'a str, content: &'a [u8]) -> anyhow::Result<()>;
     async fn read<'a>(&'a self, path: &'a str) -> anyhow::Result<String>;
 }
