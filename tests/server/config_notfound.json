@@ -1,7 +1,7 @@
 {
   "server": {
     "port": 19194,
-    "host": "0.0.0.0"
+    "host": "localhost"
   },
   "auth": {
     "auth_url": "http://localhost:19194/auth",

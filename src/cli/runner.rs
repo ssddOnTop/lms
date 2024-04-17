@@ -57,6 +57,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_check() {
+        logger_init();
+
         let config_path = PathBuf::from("examples/config.json")
             .to_str()
             .unwrap()
