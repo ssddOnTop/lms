@@ -23,6 +23,33 @@
       },
       "type": "object"
     },
+    "Server": {
+      "properties": {
+        "host": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "port": {
+          "format": "uint16",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "workers": {
+          "format": "uint",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
     "TotpSettings": {
       "properties": {
         "algo": {
@@ -62,13 +89,8 @@
     "auth": {
       "$ref": "#/definitions/AuthInfo"
     },
-    "port": {
-      "format": "uint16",
-      "minimum": 0.0,
-      "type": [
-        "integer",
-        "null"
-      ]
+    "server": {
+      "$ref": "#/definitions/Server"
     }
   },
   "title": "Config",
