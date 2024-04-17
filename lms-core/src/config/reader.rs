@@ -94,7 +94,7 @@ mod tests {
             when.method(httpmock::Method::GET)
                 .path("/config.json");
             then.status(200)
-                .body(expected.content.clone());
+                .body(expected.content.as_str());
         });
 
         let actual = reader.read_file(format!("{}/config.json", server.base_url())).await.unwrap();
