@@ -39,6 +39,18 @@
             "null"
           ]
         },
+        "request_timeout": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "server_file_password": {
+          "default": "",
+          "type": "string"
+        },
         "workers": {
           "format": "uint",
           "minimum": 0.0,

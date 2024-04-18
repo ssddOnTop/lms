@@ -34,6 +34,10 @@ pub struct Server {
     pub port: Option<u16>,
     #[serde(default, skip_serializing_if = "is_default")]
     pub workers: Option<usize>,
+    #[serde(default)]
+    pub server_file_password: String,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub request_timeout: Option<u64>,
 }
 
 impl Server {

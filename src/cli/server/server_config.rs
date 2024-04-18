@@ -19,7 +19,11 @@ impl ServerConfig {
     }
 
     pub fn addr(&self) -> SocketAddr {
-        (self.app_ctx.blueprint.hostname, self.app_ctx.blueprint.port).into()
+        (
+            self.app_ctx.blueprint.server.hostname,
+            self.app_ctx.blueprint.server.port,
+        )
+            .into()
     }
     pub fn playground_url(&self) -> String {
         self.addr().to_string()

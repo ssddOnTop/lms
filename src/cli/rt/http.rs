@@ -28,7 +28,6 @@ impl HttpIO for NativeHttp {
 #[cfg(test)]
 mod tests {
     use reqwest::Method;
-    use tokio;
 
     use super::*;
 
