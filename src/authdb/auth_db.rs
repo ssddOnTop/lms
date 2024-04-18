@@ -9,7 +9,6 @@ use reqwest::{Body, Method, Request};
 use serde_json::json;
 use std::sync::Arc;
 
-
 #[derive(Clone)]
 pub struct AuthDB {
     db_path: String,
@@ -36,7 +35,7 @@ impl AuthDB {
                 if !auth_request.verify_sig(auth_provider) {
                     return auth_err("Signature verification failed");
                 }
-                if auth_request.signup_details.is_none() {
+                if auth_request.signup_details.is_some() {
                     self.signup(auth_request).await
                 } else {
                     self.login(auth_request).await
