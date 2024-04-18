@@ -2,6 +2,7 @@
 #![allow(clippy::mutable_key_type)]
 
 pub mod app_ctx;
+pub mod authdb;
 pub mod blueprint;
 pub mod config;
 pub mod http;

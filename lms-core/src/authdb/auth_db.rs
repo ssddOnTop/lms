@@ -2,9 +2,9 @@ use crate::authdb::auth_actors::{Authority, User, Users};
 use anyhow::{anyhow, Context, Result};
 use lms_auth::auth::{AuthError, AuthRequest, AuthResult, AuthSucc};
 use lms_auth::local_crypto::hash_256;
-use lms_core::app_ctx::AppContext;
-use lms_core::http::response::Response;
 
+use crate::app_ctx::AppContext;
+use crate::http::response::Response;
 use reqwest::{Body, Method, Request};
 use serde_json::json;
 use std::sync::Arc;

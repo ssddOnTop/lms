@@ -1,4 +1,5 @@
 use crate::app_ctx::AppContext;
+use crate::authdb::auth_db::AuthDB;
 use anyhow::Result;
 use bytes::Bytes;
 use http_body_util::Full;
@@ -9,6 +10,7 @@ use std::sync::Arc;
 pub async fn handle_request(
     req: hyper::Request<hyper::body::Incoming>,
     app_ctx: Arc<AppContext>,
+    _auth_db: Arc<AuthDB>,
 ) -> Result<Response<Full<Bytes>>> {
     match *req.method() {
         Method::GET => handle_get(req, app_ctx).await,
