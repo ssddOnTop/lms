@@ -3,14 +3,13 @@ use crate::is_default;
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use totp_rs::{Secret, TOTP};
 
 // TODO: ADD DOCS!!
 
-#[derive(Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct Config {
-    #[serde(default, skip_serializing_if = "is_default")]
     pub server: Server,
-    #[serde(default, skip_serializing_if = "is_default")]
     pub auth: AuthInfo,
 }
 
@@ -26,7 +25,7 @@ impl Config {
         }
     }
 }
-#[derive(Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct Server {
     #[serde(default, skip_serializing_if = "is_default")]
     pub host: Option<String>,
@@ -34,8 +33,6 @@ pub struct Server {
     pub port: Option<u16>,
     #[serde(default, skip_serializing_if = "is_default")]
     pub workers: Option<usize>,
-    #[serde(default)]
-    pub server_file_password: String,
     #[serde(default, skip_serializing_if = "is_default")]
     pub request_timeout: Option<u64>,
 }
@@ -46,19 +43,15 @@ impl Server {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct AuthInfo {
-    #[serde(default, skip_serializing_if = "is_default")]
-    pub auth_url: String,
-    #[serde(default, skip_serializing_if = "is_default")]
+    pub auth_db_path: String,
     pub totp: TotpSettings,
-    #[serde(default, skip_serializing_if = "is_default")]
     pub aes_key: String,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct TotpSettings {
-    #[serde(default, skip_serializing_if = "is_default")]
     pub totp_secret: String,
     #[serde(default, skip_serializing_if = "is_default")]
     pub algo: Option<Algorithm>,
@@ -66,4 +59,16 @@ pub struct TotpSettings {
     pub digits: Option<usize>,
     #[serde(default, skip_serializing_if = "is_default")]
     pub period: Option<u64>, // step
+}
+
+impl TotpSettings {
+    pub fn into_totp(self) -> Result<TOTP> {
+        Ok(TOTP::new(
+            self.algo.unwrap_or_default().into_totp(),
+            self.digits.unwrap_or(6),
+            1,
+            self.period.unwrap_or(30),
+            Secret::Raw(self.totp_secret.as_bytes().to_vec()).to_bytes()?,
+        )?)
+    }
 }

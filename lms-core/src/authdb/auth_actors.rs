@@ -1,12 +1,27 @@
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Authority {
     Admin,
     Faculty,
     Student,
+}
+
+impl FromStr for Authority {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.to_ascii_lowercase();
+        match s.as_str() {
+            "admin" => Ok(Authority::Admin),
+            "faculty" => Ok(Authority::Faculty),
+            "student" => Ok(Authority::Student),
+            _ => Err(anyhow!("Unable to serialize")),
+        }
+    }
 }
 
 impl Authority {
@@ -28,7 +43,7 @@ pub struct User {
     pub authority: Authority,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Users {
     users: HashMap<String, User>,
 }

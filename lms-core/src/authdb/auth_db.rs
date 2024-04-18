@@ -1,34 +1,26 @@
 use crate::authdb::auth_actors::{Authority, User, Users};
 use anyhow::{anyhow, Context, Result};
 use lms_auth::auth::{AuthError, AuthRequest, AuthResult, AuthSucc};
-use lms_auth::local_crypto::hash_256;
+use std::ops::Deref;
 
 use crate::app_ctx::AppContext;
-use crate::http::response::Response;
 use reqwest::{Body, Method, Request};
 use serde_json::json;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AuthDB {
-    db_path: String,
     users: Users,
     app_context: Arc<AppContext>,
 }
 
 impl AuthDB {
-    pub async fn init(app_context: Arc<AppContext>, db_path: String) -> Result<Self> {
-        let password = &app_context.blueprint.server.auth_pw;
-        let users = user_entry(&app_context, &db_path, password, None).await?;
-        Ok(Self {
-            db_path,
-            users,
-            app_context,
-        })
+    pub async fn init(app_context: Arc<AppContext>, users: Users) -> Result<Self> {
+        Ok(Self { users, app_context })
     }
-    pub async fn handle_request(&mut self, request: Response<bytes::Bytes>) -> AuthResult {
+    pub async fn handle_request(&mut self, body: bytes::Bytes) -> AuthResult {
         let auth_provider = &self.app_context.blueprint.auth;
-        let auth_request = AuthRequest::try_from_encrypted(&request.body, auth_provider);
+        let auth_request = AuthRequest::try_from_encrypted(&body, auth_provider);
 
         match auth_request {
             Ok(auth_request) => {
@@ -64,14 +56,7 @@ impl AuthDB {
                         };
 
                         self.users.insert(user);
-                        match user_entry(
-                            &self.app_context,
-                            &self.db_path,
-                            &self.app_context.blueprint.server.auth_pw,
-                            Some(self.users.clone()),
-                        )
-                        .await
-                        {
+                        match user_entry(self.app_context.deref(), self.users.clone()).await {
                             Ok(users) => self.users = users,
                             Err(e) => {
                                 panic!(
@@ -106,60 +91,37 @@ impl AuthDB {
         }
     }
 }
+pub async fn user_entry(app_context: &AppContext, users: Users) -> Result<Users> {
+    let password = String::from_utf8(app_context.blueprint.auth.get_pw().to_vec())?;
 
-async fn user_entry<T: AsRef<str>>(
-    app_context: &Arc<AppContext>,
-    db_path: &str,
-    password: T,
-    users: Option<Users>,
-) -> Result<Users> {
-    let password = hash_256(password);
+    let db_path = app_context.blueprint.auth.db_path();
 
     if db_path.starts_with("http") {
         let url = url::Url::parse(db_path)?;
         let mut req = Request::new(Method::POST, url);
 
-        if let Some(users) = users {
-            let user = serde_json::to_string(&users)?;
-            *req.body_mut() = Some(Body::from(
-                json!({
-                    "operation": "put_user",
-                    "users": user,
-                    "pw": &password
-                })
-                .to_string(),
-            ));
-        } else {
-            *req.body_mut() = Some(Body::from(
-                json!({
-                    "operation": "get_users",
-                    "pw": &password
-                })
-                .to_string(),
-            ));
-        }
+        let user = serde_json::to_string(&users)?;
+        *req.body_mut() = Some(Body::from(
+            json!({
+                "operation": "put_user",
+                "users": user,
+                "pw": &password
+            })
+            .to_string(),
+        ));
 
         let result = app_context.runtime.http.execute(req).await?;
         let users = serde_json::from_slice::<Users>(&result.body)?;
 
         Ok(users)
     } else {
-        let users = if let Some(users) = users {
-            let users_str = serde_json::to_string(&users)?;
-            let users_str = app_context.blueprint.auth.encrypt_aes(&users_str)?;
-            app_context
-                .runtime
-                .file
-                .write(db_path, users_str.as_bytes())
-                .await?; // store encrypted directly
-
-            users
-        } else {
-            let encrypted_users = app_context.runtime.file.read(db_path).await?;
-            let users_str = app_context.blueprint.auth.decrypt_aes(encrypted_users)?;
-
-            serde_json::from_str::<Users>(&users_str)?
-        };
+        let users_str = serde_json::to_string(&users)?;
+        let users_str = app_context.blueprint.auth.encrypt_aes(&users_str)?;
+        app_context
+            .runtime
+            .file
+            .write(db_path, users_str.as_bytes())
+            .await?; // store encrypted directly
 
         Ok(users)
     }
@@ -170,7 +132,7 @@ fn verify(username: &str, pw: &str, users: &Users) -> Result<User> {
     if user.password.eq(pw) {
         Ok(user)
     } else {
-        Err(anyhow!("Invalid password"))
+        Err(anyhow!("Invalid password for user: {}", username))
     }
 }
 

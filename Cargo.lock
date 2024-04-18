@@ -247,6 +247,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-recursion"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30c5ef0ede93efbf733c1a727f3b6b5a1060bbedd5600183e66f6e4be4af0ec5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.59",
+]
+
+[[package]]
 name = "async-signal"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1453,8 +1464,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.22.0",
+ "bytes",
  "hex",
+ "http-body-util",
  "httpmock",
+ "hyper 1.3.1",
  "libaes",
  "reqwest",
  "serde",
@@ -1484,6 +1498,7 @@ name = "lms-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-recursion",
  "async-trait",
  "bytes",
  "derive_setters",

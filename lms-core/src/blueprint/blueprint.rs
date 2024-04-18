@@ -1,72 +1,107 @@
-use crate::config::Config;
-
-use lms_auth::auth::AuthProvider;
-use lms_auth::local_crypto::hash_128;
 use std::net::IpAddr;
+
+use anyhow::anyhow;
 use totp_rs::{Algorithm, Secret, TOTP};
+
+use crate::authdb::auth_actors::Users;
+use lms_auth::auth::AuthProvider;
+use lms_auth::local_crypto::hash_256;
+
+use crate::config::config_module::ConfigModule;
 
 #[derive(Debug, Clone)]
 pub struct Blueprint {
     pub server: Server,
     pub auth: AuthProvider,
+    pub users: Users,
 }
 
 #[derive(Debug, Clone)]
 pub struct Server {
     pub port: u16,
     pub hostname: IpAddr,
-    pub auth_pw: String,
     pub token: TOTP,
 }
 
-impl TryFrom<Config> for Blueprint {
+impl TryFrom<ConfigModule> for Blueprint {
     type Error = anyhow::Error;
 
-    fn try_from(config: Config) -> Result<Self, Self::Error> {
-        validate_config(&config)?;
-        let port = config.server.port.unwrap_or(19194);
-        let hostname = config.server.host.unwrap_or("0.0.0.0".to_string());
+    fn try_from(config_module: ConfigModule) -> Result<Self, Self::Error> {
+        let cfg = config_module.clone();
+        let port = config_module.config.server.port.unwrap_or(19194);
+        let hostname = config_module
+            .config
+            .server
+            .host
+            .unwrap_or("0.0.0.0".to_string());
         let hostname = if hostname.eq("localhost") {
             "0.0.0.0".parse()
         } else {
             hostname.parse()
         }?;
 
-        let totp = TOTP::new(
-            config.auth.totp.algo.unwrap_or_default().into_totp(),
-            config.auth.totp.digits.unwrap_or(6),
-            1,
-            config.auth.totp.period.unwrap_or(30),
-            Secret::Raw(config.auth.totp.totp_secret.as_bytes().to_vec()).to_bytes()?,
-        )?;
-        let timeout_key = format!("{}{}", config.auth.totp.totp_secret, config.auth.aes_key);
+        let timeout_key = format!(
+            "{}{}",
+            config_module.config.auth.totp.totp_secret, config_module.config.auth.aes_key
+        );
         let auth = AuthProvider::init(
-            config.auth.auth_url,
-            totp,
-            hash_128(config.auth.aes_key)[..32].to_string(),
+            config_module.config.auth.auth_db_path,
+            config_module.config.auth.totp.into_totp()?,
+            hash_256(&config_module.config.auth.aes_key),
         )?;
+
+        validate_config(cfg, &auth)?;
 
         let server = Server {
             port,
             hostname,
-            auth_pw: config.server.server_file_password,
             token: TOTP::new(
                 Algorithm::SHA1,
                 8,
                 1,
-                config.server.request_timeout.unwrap_or(86400),
+                config_module.config.server.request_timeout.unwrap_or(86400),
                 Secret::Raw(timeout_key.as_bytes().to_vec()).to_bytes()?,
             )?,
         };
 
-        Ok(Self { server, auth })
+        Ok(Self {
+            server,
+            auth,
+            users: config_module.users.unwrap(),
+        })
     }
 }
 
-fn validate_config(config: &Config) -> anyhow::Result<()> {
-    if url::Url::parse(&config.auth.auth_url).is_err() || !config.auth.auth_url.starts_with("http")
-    {
-        return Err(anyhow::anyhow!("auth_url is required"));
+fn validate_config(config: ConfigModule, _auth_provider: &AuthProvider) -> anyhow::Result<()> {
+    if config.users.is_none() {
+        return Err(anyhow!(
+            "Users not found in config, Initiate the server with `Init` Command"
+        ));
+    }
+
+    if !config.auth.auth_db_path.starts_with("http") {
+        // TODO FIXME
+        // we can't perform std::fs here. lms-core must be platform independent.
+        // proposal: create ConfigModule with resolve function which initiates file for auth db.
+        // we still need to figure out how to handle the file path.
+
+        /*let pb = PathBuf::from(&config.auth.auth_db_path);
+        if !pb.exists() {
+            return Err(anyhow!("Auth DB path is not a valid URL or file path"));
+        } else {
+            let users = auth_provider.decrypt_aes(std::fs::read_to_string(&config.auth.auth_db_path)?).map_err(|_| anyhow!("Failed to decrypt Auth DB with given key"))?;
+            let _: Users = serde_json::from_str(&users).map_err(|_| anyhow!("Failed to parse Auth DB"))?;
+        }*/
+    } else {
+        url::Url::parse(&config.auth.auth_db_path)
+            .map_err(|_| anyhow!("Invalid URL for AuthDB"))?;
+        /*
+        TODO FIXME
+        let req = reqwest::Client::new().post(url).body(reqwest::Body::default());
+        let res = req.send().await?;
+        if !res.status().is_success() {
+            return Err(anyhow!("Failed to connect to Auth DB"));
+        }*/
     }
     if config.auth.aes_key.is_empty() || config.auth.aes_key.len() < 8 {
         return Err(anyhow::anyhow!(

@@ -1,16 +1,16 @@
 use crate::is_default;
 use anyhow::{anyhow, Context, Result};
+use http_body_util::Full;
 use libaes::AES_256_KEY_LEN;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use totp_rs::TOTP;
-use url::Url;
 
-use crate::local_crypto::{decrypt_aes, encrypt_aes, gen_totp, hash_256};
+use crate::local_crypto::{decrypt_aes, encrypt_aes, gen_totp, hash_128, hash_256};
 
 #[derive(Debug, Clone)]
 pub struct AuthProvider {
-    auth_db_url: Url,
+    auth_db_path: String,
     totp: TOTP,
     aes_key: Vec<u8>,
 }
@@ -92,8 +92,9 @@ impl AuthRequest {
             signup_details,
         })
     }
-    fn into_encrypted_request(self, aes_key: &[u8]) -> Result<String> {
-        let request = encrypt_aes(aes_key, &serde_json::to_string(&self)?)
+    fn into_encrypted_request(self, auth_provider: &AuthProvider) -> Result<String> {
+        let request = auth_provider
+            .encrypt_aes(serde_json::to_string(&self)?)
             .map_err(|_| anyhow!("Unable to encrypt request"))?;
         Ok(request)
     }
@@ -102,11 +103,14 @@ impl AuthRequest {
         auth_provider: &AuthProvider,
     ) -> Result<Self> {
         let req = auth_provider.decrypt_aes(req)?;
+        println!("hx");
         let req = serde_json::from_str::<Self>(&req)?;
         Ok(req)
     }
     pub fn verify_sig(&self, auth_provider: &AuthProvider) -> bool {
         let sig = auth_provider.gen_sig(&self.username, &self.password);
+        println!("L: {:?}", sig);
+        println!("R: {}", self.signature);
         sig.map(|v| v.eq(&self.signature)).unwrap_or(false)
     }
 }
@@ -118,14 +122,23 @@ impl AuthResult {
         let result = serde_json::from_str::<AuthResult>(&response)?;
         Ok(result)
     }
+    pub fn into_hyper_response(self) -> Result<hyper::Response<Full<bytes::Bytes>>> {
+        let body = serde_json::to_string(&self)?;
+        let response = hyper::Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(Full::new(bytes::Bytes::from(body)))?;
+        Ok(response)
+    }
 }
 
 impl AuthProvider {
-    pub fn init(auth_db_url: String, totp: TOTP, aes_key: String) -> Result<AuthProvider> {
+    pub fn init(auth_db_path: String, totp: TOTP, aes_key: String) -> Result<AuthProvider> {
+        let aes_key = hash_128(aes_key)[..32].to_string();
         assert_eq!(aes_key.len(), AES_256_KEY_LEN, "AES key must be 16 bytes");
 
         let provider = Self {
-            auth_db_url: Url::parse(&auth_db_url)?,
+            auth_db_path,
             totp,
             aes_key: aes_key.into_bytes(),
         };
@@ -134,10 +147,10 @@ impl AuthProvider {
 
     pub async fn authenticate(&self, username: &str, password: &str) -> Result<AuthSucc> {
         let request = AuthRequest::new(username, password, self, None)?;
-        let request = request.into_encrypted_request(&self.aes_key)?;
+        let request = request.into_encrypted_request(self)?;
 
         let response = reqwest::Client::new()
-            .post(self.auth_db_url.clone())
+            .post(self.auth_db_path.clone())
             .body(request)
             .send()
             .await?;
@@ -161,6 +174,12 @@ impl AuthProvider {
     pub fn gen_sig(&self, a: &str, b: &str) -> Result<String> {
         let totp = gen_totp(&self.totp)?;
         Ok(hash_256(format!("{}ssdd{}{}", totp, a, b)))
+    }
+    pub fn db_path(&self) -> &str {
+        &self.auth_db_path
+    }
+    pub fn get_pw(&self) -> &[u8] {
+        &self.aes_key
     }
 }
 
@@ -216,7 +235,7 @@ mod tests {
         let provider = AuthProvider::init(server_url, totp, aes_key)?;
 
         let req = AuthRequest::new("user", "pass", &provider, None)?;
-        let req = req.into_encrypted_request(&provider.aes_key)?;
+        let req = req.into_encrypted_request(&provider)?;
         let resp_json = json!({
             "success": {
                 "name": "John Doe",
@@ -243,4 +262,36 @@ mod tests {
 
         Ok(())
     }
+
+    /*    #[tokio::test]
+    async fn test_req_gen() -> Result<()> { // TODO DROP THIS
+        let totp = TOTP::new(
+            Algorithm::SHA1,
+            6,
+            1,
+            30,
+            Secret::Raw("base32encodedkey".as_bytes().to_vec()).to_bytes()?,
+        )?;
+        let auth = AuthProvider::init(
+            "/home/ssdd/RustroverProjects/lms/auth".to_string(),
+            totp,
+            hash_256("32bytebase64encodedkey"),
+        )?;
+
+        let signup = SignUpDet {
+            name: "fooo".to_string(),
+            authority: 0,
+            admin_username: "admin".to_string(),
+            admin_password: "tmppw".to_string(),
+        };
+
+        let req = AuthRequest::new("user", "pass", &auth, Some(signup))?;
+        let resp = reqwest::Client::new()
+            .post("http://localhost:19194/auth")
+            .body(req.into_encrypted_request(&auth)?)
+            .send()
+            .await?;
+        println!("{:?}", resp.text().await);
+        Ok(())
+    }*/
 }
