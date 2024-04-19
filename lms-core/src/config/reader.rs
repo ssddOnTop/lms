@@ -59,6 +59,14 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    async fn get_rt() -> anyhow::Result<TargetRuntime> {
+        let rt = crate::runtime::tests::init();
+        let path = get_example_config();
+        let content = tokio::fs::read(&path).await?;
+        rt.file.write(&path, content.as_ref()).await.unwrap();
+        Ok(rt)
+    }
+
     fn start_mock_server() -> httpmock::MockServer {
         httpmock::MockServer::start()
     }
@@ -76,7 +84,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_file() {
-        let runtime = crate::runtime::tests::init();
+        let runtime = get_rt().await.unwrap();
         let reader = ConfigReader::init(runtime);
 
         let example_config = get_example_config();
@@ -88,7 +96,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_from_url() {
-        let runtime = crate::runtime::tests::init();
+        let runtime = get_rt().await.unwrap();
         let reader = ConfigReader::init(runtime);
         let expected = reader.read_file(get_example_config()).await.unwrap();
 
@@ -109,7 +117,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read() {
-        let runtime = crate::runtime::tests::init();
+        let runtime = get_rt().await.unwrap();
         let reader = ConfigReader::init(runtime);
         let example_config = get_example_config();
 
