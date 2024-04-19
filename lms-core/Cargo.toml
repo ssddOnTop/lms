@@ -23,6 +23,7 @@ lazy_static = "1.4.0"
 num_cpus = "1.16.0"
 url = "2.5.0"
 async-recursion = "1.1.0"
+log = "0.4.21"
 
 [dev-dependencies]
 tokio = {version = "1.37.0",features = ["macros","fs"]}
