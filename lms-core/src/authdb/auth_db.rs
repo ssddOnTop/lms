@@ -36,7 +36,7 @@ impl AuthDB {
                     self.login(auth_request).await
                 }
             }
-            Err(_) => auth_err("Unable to deserialize auth request"),
+            Err(e) => auth_err(e.to_string()),
         }
     }
 

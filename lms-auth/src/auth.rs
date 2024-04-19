@@ -88,8 +88,11 @@ impl AuthRequest {
         req: T,
         auth_provider: &AuthProvider,
     ) -> Result<Self> {
-        let req = auth_provider.decrypt_aes(req)?;
-        let req = serde_json::from_str::<Self>(&req)?;
+        let req = auth_provider
+            .decrypt_aes(req)
+            .map_err(|_| anyhow!("Unable to decrypt request"))?;
+        let req =
+            serde_json::from_str::<Self>(&req).map_err(|_| anyhow!("Unable to parse request"))?;
         Ok(req)
     }
     pub fn verify_sig(&self, auth_provider: &AuthProvider) -> bool {

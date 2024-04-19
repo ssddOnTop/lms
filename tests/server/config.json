@@ -1,10 +1,12 @@
 {
+  "$schema": ".lmsrc.schema.json",
   "server": {
     "port": 19194,
-    "host": "localhost"
+    "host": "localhost",
+    "workers": 4
   },
   "auth": {
-    "auth_db_path": "./auth",
+    "auth_db_path": "tests/server/auth",
     "totp": {
       "totp_secret": "base32encodedkey"
     },
