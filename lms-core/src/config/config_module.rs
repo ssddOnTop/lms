@@ -52,11 +52,10 @@ impl ConfigModule {
         parent_dir: Option<&Path>,
     ) -> anyhow::Result<Self> {
         let totp = self.config.auth.totp.clone().into_totp()?;
+        if self.config.auth.aes_key.len() < 9 {
+            anyhow::bail!("authDbPath must be at least 8 characters long");
+        }
 
-        assert!(
-            self.config.auth.aes_key.len() > 8,
-            "db_file_password must be at least 8 characters long"
-        );
         self.config.auth.auth_db_path =
             ConfigModule::resolve_path(&self.config.auth.auth_db_path, parent_dir);
 
