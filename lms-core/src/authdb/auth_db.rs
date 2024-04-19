@@ -248,4 +248,65 @@ mod tests {
         assert_eq!(succ.name, "newbie");
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_handle_req_login() -> anyhow::Result<()> {
+        let mut auth_db = get_db().await?;
+
+        let newbie = User {
+            username: "newbie".to_string(),
+            name: "newbie".to_string(),
+            password: hash_256("newbie"),
+            authority: Authority::Student,
+        };
+        auth_db.users.insert(newbie);
+
+        let auth_req = AuthRequest::new(
+            "newbie",
+            "newbie",
+            &auth_db.app_context.blueprint.extensions.auth,
+            None,
+        )?;
+
+        let encrypted_req = auth_db.app_context.blueprint.extensions.auth.encrypt_aes(serde_json::to_string(&auth_req)?)?;
+        let result = auth_db.handle_request(bytes::Bytes::from(encrypted_req)).await;
+
+        assert!(result.success.is_some());
+        let succ = result.success.unwrap();
+        assert_eq!(succ.name, "newbie");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_handle_req_signup() -> anyhow::Result<()> {
+        let mut auth_db = get_db().await?;
+        let admin = User {
+            username: "admin".to_string(),
+            name: "admin".to_string(),
+            password: hash_256("admin"),
+            authority: Authority::Admin,
+        };
+        auth_db.users.insert(admin);
+        let signup = SignUpDet {
+            name: "newbie".to_string(),
+            authority: 2,                        // is student
+            admin_username: "admin".to_string(), // siged by: admin
+            admin_password: "admin".to_string(),
+        };
+
+        let auth_req = AuthRequest::new(
+            "newbie",
+            "newbie",
+            &auth_db.app_context.blueprint.extensions.auth,
+            Some(signup),
+        )?;
+
+        let encrypted_req = auth_db.app_context.blueprint.extensions.auth.encrypt_aes(serde_json::to_string(&auth_req)?)?;
+        let result = auth_db.handle_request(bytes::Bytes::from(encrypted_req)).await;
+
+        assert!(result.success.is_some());
+        let succ = result.success.unwrap();
+        assert_eq!(succ.name, "newbie");
+        Ok(())
+    }
 }
