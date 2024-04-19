@@ -6,10 +6,17 @@ use lms_auth::auth::AuthProvider;
 use reqwest::{Body, Request};
 use serde_json::json;
 use std::ops::Deref;
+
 #[derive(Default, Debug, Clone)]
 pub struct ConfigModule {
     pub config: Config,
+    pub extensions: Extensions,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct Extensions {
     pub users: Option<Users>,
+    pub auth: Option<AuthProvider>,
 }
 
 impl Deref for ConfigModule {
@@ -23,7 +30,10 @@ impl From<Config> for ConfigModule {
     fn from(value: Config) -> Self {
         Self {
             config: value,
-            users: None,
+            extensions: Extensions {
+                users: None,
+                auth: None,
+            },
         }
     }
 }
@@ -37,23 +47,18 @@ impl ConfigModule {
             "db_file_password must be at least 8 characters long"
         );
 
-        let password = lms_auth::local_crypto::hash_256(&self.config.auth.aes_key);
-
         let auth = AuthProvider::init(
             self.config.auth.auth_db_path.clone(),
             totp,
-            password.clone(),
+            lms_auth::local_crypto::hash_256(&self.config.auth.aes_key).clone(),
         )?;
 
-        let cfg_module = if !auth.db_path().starts_with("http") {
+        let users = if !auth.db_path().starts_with("http") {
             match target_runtime.file.read(auth.db_path()).await {
                 Ok(encrypted_users) => {
                     let decrypted_users = auth.decrypt_aes(encrypted_users)?;
-                    let users = serde_json::from_str::<Users>(&decrypted_users)?;
-                    ConfigModule {
-                        users: Some(users),
-                        ..self
-                    }
+
+                    serde_json::from_str::<Users>(&decrypted_users)?
                 }
                 Err(_) => {
                     let users = Users::default();
@@ -62,32 +67,31 @@ impl ConfigModule {
                         .file
                         .write(auth.db_path(), encrypted_users.as_bytes())
                         .await?;
-                    ConfigModule {
-                        users: Some(users),
-                        ..self
-                    }
+                    users
                 }
             }
         } else {
             let url = url::Url::parse(auth.db_path())?;
 
             let mut req = Request::new(Method::POST, url);
+            let password = String::from_utf8(auth.get_pw().to_vec())?;
             *req.body_mut() = Some(Body::from(
                 json!({
                     "operation": "get_users",
-                    "pw": password
+                    "pw": &password
                 })
                 .to_string(),
             ));
             let result = target_runtime.http.execute(req).await?;
-            let users = serde_json::from_slice::<Users>(&result.body)?;
-
-            ConfigModule {
-                users: Some(users),
-                ..self
-            }
+            serde_json::from_slice::<Users>(&result.body)?
         };
 
-        Ok(cfg_module)
+        Ok(ConfigModule {
+            extensions: Extensions {
+                users: Some(users),
+                auth: Some(auth),
+            },
+            ..self
+        })
     }
 }

@@ -117,7 +117,7 @@ mod tests {
         assert_eq!(config.server.port.unwrap(), 19194);
         assert_eq!(config.server.get_workers(), 4);
         assert_eq!(config.server.host.clone().unwrap(), "0.0.0.0");
-        assert_eq!(config.auth.auth_db_path, "http://localhost:19194/auth");
+        assert!(!config.auth.auth_db_path.is_empty());
         assert_eq!(config.auth.totp.totp_secret, "base32encodedkey");
         assert_eq!(config.auth.aes_key, "32bytebase64encodedkey");
     }

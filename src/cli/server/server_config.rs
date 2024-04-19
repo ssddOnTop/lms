@@ -13,7 +13,7 @@ pub struct ServerConfig {
 }
 impl ServerConfig {
     pub async fn new(blueprint: Blueprint) -> Result<Self> {
-        let users = blueprint.users.clone();
+        let users = blueprint.extensions.users.clone();
         let app_ctx = AppContext {
             runtime: rt::init(),
             blueprint,

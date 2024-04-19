@@ -47,7 +47,7 @@ async fn run(cli: Cli, runtime: TargetRuntime) -> anyhow::Result<()> {
         } => {
             let config_module = config_reader.read(config_path).await?;
             let blueprint = Blueprint::try_from(config_module)?;
-            let mut users = blueprint.users.clone();
+            let mut users = blueprint.extensions.users.clone();
             let app_context = AppContext { blueprint, runtime };
 
             users.insert(User {

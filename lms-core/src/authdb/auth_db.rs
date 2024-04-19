@@ -19,7 +19,7 @@ impl AuthDB {
         Ok(Self { users, app_context })
     }
     pub async fn handle_request(&mut self, body: bytes::Bytes) -> AuthResult {
-        let auth_provider = &self.app_context.blueprint.auth;
+        let auth_provider = &self.app_context.blueprint.extensions.auth;
         let auth_request = AuthRequest::try_from_encrypted(&body, auth_provider);
 
         match auth_request {
@@ -92,9 +92,9 @@ impl AuthDB {
     }
 }
 pub async fn user_entry(app_context: &AppContext, users: Users) -> Result<Users> {
-    let password = String::from_utf8(app_context.blueprint.auth.get_pw().to_vec())?;
+    let password = String::from_utf8(app_context.blueprint.extensions.auth.get_pw().to_vec())?;
 
-    let db_path = app_context.blueprint.auth.db_path();
+    let db_path = app_context.blueprint.extensions.auth.db_path();
 
     if db_path.starts_with("http") {
         let url = url::Url::parse(db_path)?;
@@ -116,7 +116,11 @@ pub async fn user_entry(app_context: &AppContext, users: Users) -> Result<Users>
         Ok(users)
     } else {
         let users_str = serde_json::to_string(&users)?;
-        let users_str = app_context.blueprint.auth.encrypt_aes(&users_str)?;
+        let users_str = app_context
+            .blueprint
+            .extensions
+            .auth
+            .encrypt_aes(&users_str)?;
         app_context
             .runtime
             .file

@@ -35,6 +35,8 @@ pub struct Server {
     pub workers: Option<usize>,
     #[serde(default, skip_serializing_if = "is_default")]
     pub request_timeout: Option<u64>,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub timeout_key: Option<String>,
 }
 
 impl Server {

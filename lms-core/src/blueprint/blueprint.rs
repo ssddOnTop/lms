@@ -4,16 +4,21 @@ use anyhow::anyhow;
 use totp_rs::{Algorithm, Secret, TOTP};
 
 use crate::authdb::auth_actors::Users;
+use crate::config;
 use lms_auth::auth::AuthProvider;
-use lms_auth::local_crypto::hash_256;
 
 use crate::config::config_module::ConfigModule;
 
 #[derive(Debug, Clone)]
 pub struct Blueprint {
     pub server: Server,
-    pub auth: AuthProvider,
+    pub extensions: Extensions,
+}
+
+#[derive(Debug, Clone)]
+pub struct Extensions {
     pub users: Users,
+    pub auth: AuthProvider,
 }
 
 #[derive(Debug, Clone)]
@@ -23,57 +28,81 @@ pub struct Server {
     pub token: TOTP,
 }
 
-impl TryFrom<ConfigModule> for Blueprint {
+impl TryFrom<config::Server> for Server {
     type Error = anyhow::Error;
 
-    fn try_from(config_module: ConfigModule) -> Result<Self, Self::Error> {
-        let cfg = config_module.clone();
-        let port = config_module.config.server.port.unwrap_or(19194);
-        let hostname = config_module
-            .config
-            .server
-            .host
-            .unwrap_or("0.0.0.0".to_string());
+    fn try_from(server: config::Server) -> Result<Self, Self::Error> {
+        let hostname = server.host.unwrap_or("0.0.0.0".to_string());
         let hostname = if hostname.eq("localhost") {
             "0.0.0.0".parse()
         } else {
             hostname.parse()
         }?;
 
-        let timeout_key = format!(
-            "{}{}",
-            config_module.config.auth.totp.totp_secret, config_module.config.auth.aes_key
-        );
-        let auth = AuthProvider::init(
-            config_module.config.auth.auth_db_path,
-            config_module.config.auth.totp.into_totp()?,
-            hash_256(&config_module.config.auth.aes_key),
-        )?;
+        let port = server.port.unwrap_or(19194);
 
-        validate_config(cfg, &auth)?;
-
-        let server = Server {
+        Ok(Server {
             port,
             hostname,
             token: TOTP::new(
                 Algorithm::SHA1,
                 8,
                 1,
-                config_module.config.server.request_timeout.unwrap_or(86400),
-                Secret::Raw(timeout_key.as_bytes().to_vec()).to_bytes()?,
+                server.request_timeout.unwrap_or(86400),
+                Secret::Raw(server.timeout_key.unwrap().as_bytes().to_vec()).to_bytes()?,
             )?,
-        };
-
-        Ok(Self {
-            server,
-            auth,
-            users: config_module.users.unwrap(),
         })
     }
 }
 
-fn validate_config(config: ConfigModule, _auth_provider: &AuthProvider) -> anyhow::Result<()> {
-    if config.users.is_none() {
+impl TryFrom<config::config_module::Extensions> for Extensions {
+    type Error = anyhow::Error;
+
+    fn try_from(ext: config::config_module::Extensions) -> Result<Self, Self::Error> {
+        Ok(Self {
+            users: ext
+                .users
+                .ok_or_else(|| anyhow!("Users not found in config"))?,
+            auth: ext
+                .auth
+                .ok_or_else(|| anyhow!("Auth Provider not found in config"))?,
+        })
+    }
+}
+
+impl TryFrom<ConfigModule> for Blueprint {
+    type Error = anyhow::Error;
+
+    fn try_from(mut config_module: ConfigModule) -> Result<Self, Self::Error> {
+        let cfg = config_module.clone();
+
+        config_module.config.server.timeout_key =
+            Some(config_module.config.server.timeout_key.unwrap_or(format!(
+                "{}{}",
+                config_module.config.auth.totp.totp_secret, config_module.config.auth.aes_key
+            )));
+
+        validate_config(cfg, &config_module.extensions.auth)?;
+
+        let server = Server::try_from(config_module.config.server)?;
+
+        Ok(Self {
+            server,
+            extensions: Extensions::try_from(config_module.extensions)?,
+        })
+    }
+}
+
+fn validate_config(
+    config: ConfigModule,
+    _auth_provider: &Option<AuthProvider>,
+) -> anyhow::Result<()> {
+    if _auth_provider.is_none() {
+        return Err(anyhow!(
+            "Auth Provider not found in config, Initiate the server with `Init` Command"
+        ));
+    }
+    if config.extensions.users.is_none() {
         return Err(anyhow!(
             "Users not found in config, Initiate the server with `Init` Command"
         ));
