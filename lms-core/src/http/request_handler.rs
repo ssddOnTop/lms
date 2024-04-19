@@ -1,18 +1,52 @@
 use crate::app_ctx::AppContext;
-use anyhow::Result;
+use crate::authdb::auth_db::AuthDB;
+use anyhow::{Context, Result};
 use bytes::Bytes;
-use http_body_util::Full;
-use hyper::{Method, Response};
+use http_body_util::{BodyExt, Full};
+use hyper::body::Incoming;
+use hyper::{Method, Request, Response};
 use lazy_static::lazy_static;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 pub async fn handle_request(
-    req: hyper::Request<hyper::body::Incoming>,
+    req: Request<Incoming>,
     app_ctx: Arc<AppContext>,
+    auth_db: Arc<RwLock<AuthDB>>,
 ) -> Result<Response<Full<Bytes>>> {
     match *req.method() {
         Method::GET => handle_get(req, app_ctx).await,
+        Method::POST => handle_post(req, app_ctx, auth_db).await,
         _ => not_found(),
+    }
+}
+
+async fn into_bytes(req: Request<Incoming>) -> Result<Bytes> {
+    let bytes = req
+        .into_body()
+        .frame()
+        .await
+        .context("unable to extract frame")??
+        .into_data()
+        .map_err(|e| anyhow::anyhow!("{:?}", e))?;
+
+    Ok(bytes)
+}
+
+async fn handle_post(
+    req: Request<Incoming>,
+    _app_ctx: Arc<AppContext>,
+    auth_db: Arc<RwLock<AuthDB>>,
+) -> Result<Response<Full<Bytes>>> {
+    let path = req.uri().path();
+    match path {
+        "/auth" => auth_db
+            .write()
+            .await
+            .handle_request(into_bytes(req).await?)
+            .await
+            .into_hyper_response(),
+        &_ => not_found(),
     }
 }
 

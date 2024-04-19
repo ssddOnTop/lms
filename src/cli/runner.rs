@@ -1,6 +1,10 @@
 use crate::cli::commands::{Cli, Command};
 use crate::cli::{self, rt};
 use clap::Parser;
+use lms_auth::local_crypto::hash_256;
+use lms_core::app_ctx::AppContext;
+use lms_core::authdb::auth_actors::User;
+use lms_core::authdb::auth_db::user_entry;
 use lms_core::blueprint::Blueprint;
 use lms_core::config::reader::ConfigReader;
 use lms_core::runtime::TargetRuntime;
@@ -33,8 +37,41 @@ async fn run(cli: Cli, runtime: TargetRuntime) -> anyhow::Result<()> {
                 }
             }
         }
+        Command::Init {
+            config_path,
+            username,
+            name,
+            password,
+            authority,
+            print,
+        } => {
+            let config_module = config_reader.read(config_path).await?;
+            let blueprint = Blueprint::try_from(config_module)?;
+            let mut users = blueprint.extensions.users.clone();
+            let app_context = AppContext { blueprint, runtime };
+
+            users.insert(User {
+                username,
+                name,
+                password: hash_256(password),
+                authority,
+            });
+
+            if print.unwrap_or_default() {
+                display(serde_json::to_string_pretty(&users).unwrap());
+            }
+
+            // TODO: Fix user_entry to take single user
+            user_entry(&app_context, users)
+                .await
+                .map_err(|e| anyhow::anyhow!("Unable to create user with error: {}", e))?;
+        }
     }
     Ok(())
+}
+
+fn display<T: AsRef<str>>(content: T) {
+    println!("{}", content.as_ref());
 }
 
 fn logger_init() {

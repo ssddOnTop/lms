@@ -16,12 +16,13 @@ pub struct TargetRuntime {
 
 #[cfg(test)]
 pub mod tests {
+
     use std::sync::Arc;
 
-    use anyhow::{anyhow, Result};
+    use anyhow::{Context, Result};
+    use dashmap::DashMap;
     use hyper::body::Bytes;
     use reqwest::Client;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     use crate::http::response::Response;
     use crate::runtime::TargetRuntime;
@@ -52,30 +53,29 @@ pub mod tests {
     }
 
     #[derive(Clone)]
-    struct TestFileIO {}
+    struct TestFileIO {
+        hm: DashMap<String, Vec<u8>>,
+    }
 
     impl TestFileIO {
         fn init() -> Self {
-            TestFileIO {}
+            TestFileIO { hm: DashMap::new() }
         }
     }
 
     #[async_trait::async_trait]
     impl FileIO for TestFileIO {
         async fn write<'a>(&'a self, path: &'a str, content: &'a [u8]) -> anyhow::Result<()> {
-            let mut file = tokio::fs::File::create(path).await?;
-            file.write_all(content)
-                .await
-                .map_err(|e| anyhow!("{}", e))?;
+            self.hm.insert(path.to_string(), content.to_vec());
             Ok(())
         }
 
         async fn read<'a>(&'a self, path: &'a str) -> anyhow::Result<String> {
-            let mut file = tokio::fs::File::open(path).await?;
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer)
-                .await
-                .map_err(|e| anyhow!("{}", e))?;
+            let buffer = self
+                .hm
+                .get(path)
+                .context(format!("File: {} not found", path))?
+                .clone();
             Ok(String::from_utf8(buffer)?)
         }
     }

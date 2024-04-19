@@ -2,17 +2,17 @@ use crate::cli::server::http1;
 use crate::cli::server::server_config::ServerConfig;
 use anyhow::Result;
 use lms_core::blueprint::Blueprint;
-use lms_core::config::Config;
+use lms_core::config::config_module::ConfigModule;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
 pub struct Server {
-    config: Config,
+    config: ConfigModule,
     server_up_sender: Option<oneshot::Sender<()>>,
 }
 
 impl Server {
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: ConfigModule) -> Self {
         Self {
             config,
             server_up_sender: None,
@@ -30,7 +30,7 @@ impl Server {
     /// Starts the server in the current Runtime
     pub async fn start(self) -> Result<()> {
         let blueprint = Blueprint::try_from(self.config)?;
-        let server_config = Arc::new(ServerConfig::new(blueprint).await);
+        let server_config = Arc::new(ServerConfig::new(blueprint).await?);
 
         http1::run(server_config, self.server_up_sender).await
     }

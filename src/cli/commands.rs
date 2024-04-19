@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use lms_core::authdb::auth_actors::Authority;
 
 const VERSION: &str = match option_env!("APP_VERSION") {
     Some(version) => version,
@@ -24,5 +25,23 @@ pub enum Command {
         /// Path for the configuration file or http(s) link to config file.
         #[arg(required = true)]
         config_path: String,
+    },
+    /// Initializes the configuration file
+    /// It helps in creating initial Admins, Faculties, and Students
+    Init {
+        /// Path for the configuration file or http(s) link to config file.
+        #[arg(required = true)]
+        config_path: String,
+        #[arg(short, long)]
+        username: String,
+        #[arg(short, long)]
+        name: String,
+        #[arg(short, long)]
+        password: String,
+        #[arg(short, long)]
+        authority: Authority,
+
+        #[arg(long)]
+        print: Option<bool>,
     },
 }

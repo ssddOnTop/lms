@@ -1,0 +1,10 @@
+---
+source: tests/server_spec.rs
+expression: "serde_json::to_string_pretty(&response).unwrap()"
+---
+{
+  "success": {
+    "name": "newbie",
+    "token": ""
+  }
+}

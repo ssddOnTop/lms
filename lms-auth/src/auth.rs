@@ -1,24 +1,35 @@
 use crate::is_default;
 use anyhow::{anyhow, Context, Result};
+use http_body_util::Full;
 use libaes::AES_256_KEY_LEN;
 use serde::{Deserialize, Serialize};
-use totp_rs::TOTP;
-use url::Url;
 
-use crate::local_crypto::{decrypt_aes, encrypt_aes, gen_totp, hash_256};
+use totp_rs::TOTP;
+
+use crate::local_crypto::{decrypt_aes, encrypt_aes, gen_totp, hash_128, hash_256};
 
 #[derive(Debug, Clone)]
 pub struct AuthProvider {
-    auth_db_url: Url,
+    auth_db_path: String,
     totp: TOTP,
     aes_key: Vec<u8>,
 }
 
-#[derive(Serialize)]
-struct AuthRequest {
-    username: String,
-    password: String,
-    signature: String,
+#[derive(Serialize, Deserialize)]
+pub struct AuthRequest {
+    pub username: String,
+    pub password: String,
+    pub signature: String,
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub signup_details: Option<SignUpDet>,
+}
+
+#[derive(PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignUpDet {
+    pub name: String,
+    pub authority: u8,
+    pub admin_username: String,
+    pub admin_password: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,25 +51,53 @@ pub struct AuthSucc {
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuthError {
     #[serde(default, skip_serializing_if = "is_default")]
-    message: String,
+    pub message: String,
 }
 
 impl AuthRequest {
-    fn new<T: AsRef<str>>(username: T, password: T, provider: &AuthProvider) -> Result<Self> {
+    pub fn new<T: AsRef<str>>(
+        username: T,
+        password: T,
+        provider: &AuthProvider,
+        sign_up_det: Option<SignUpDet>,
+    ) -> Result<Self> {
         let password = hash_256(password);
-        let totp = gen_totp(&provider.totp)?;
-        let extra_hash = hash_256(format!("{}ssdd{}{}", totp, username.as_ref(), password));
+        let extra_hash = provider.gen_sig(username.as_ref(), &password)?;
+
+        let mut signup_details = None;
+
+        if let Some(mut signup_det) = sign_up_det {
+            signup_det.admin_password = hash_256(signup_det.admin_password);
+            signup_details = Some(signup_det);
+        }
 
         Ok(Self {
             username: username.as_ref().to_string(),
             password,
             signature: extra_hash,
+            signup_details,
         })
     }
-    fn into_encrypted_request(self, aes_key: &[u8]) -> Result<String> {
-        let request = encrypt_aes(aes_key, &serde_json::to_string(&self)?)
+    pub fn into_encrypted_request(self, auth_provider: &AuthProvider) -> Result<String> {
+        let request = auth_provider
+            .encrypt_aes(serde_json::to_string(&self)?)
             .map_err(|_| anyhow!("Unable to encrypt request"))?;
         Ok(request)
+    }
+    pub fn try_from_encrypted<T: AsRef<[u8]>>(
+        req: T,
+        auth_provider: &AuthProvider,
+    ) -> Result<Self> {
+        let req = auth_provider
+            .decrypt_aes(req)
+            .map_err(|_| anyhow!("Unable to decrypt request"))?;
+        let req =
+            serde_json::from_str::<Self>(&req).map_err(|_| anyhow!("Unable to parse request"))?;
+        Ok(req)
+    }
+    pub fn verify_sig(&self, auth_provider: &AuthProvider) -> bool {
+        let sig = auth_provider.gen_sig(&self.username, &self.password);
+        sig.map(|v| v.eq(&self.signature)).unwrap_or(false)
     }
 }
 
@@ -69,14 +108,23 @@ impl AuthResult {
         let result = serde_json::from_str::<AuthResult>(&response)?;
         Ok(result)
     }
+    pub fn into_hyper_response(self) -> Result<hyper::Response<Full<bytes::Bytes>>> {
+        let body = serde_json::to_string(&self)?;
+        let response = hyper::Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(Full::new(bytes::Bytes::from(body)))?;
+        Ok(response)
+    }
 }
 
 impl AuthProvider {
-    pub fn init(auth_db_url: String, totp: TOTP, aes_key: String) -> Result<AuthProvider> {
+    pub fn init(auth_db_path: String, totp: TOTP, aes_key: String) -> Result<AuthProvider> {
+        let aes_key = hash_128(aes_key)[..32].to_string();
         assert_eq!(aes_key.len(), AES_256_KEY_LEN, "AES key must be 16 bytes");
 
         let provider = Self {
-            auth_db_url: Url::parse(&auth_db_url)?,
+            auth_db_path,
             totp,
             aes_key: aes_key.into_bytes(),
         };
@@ -84,11 +132,11 @@ impl AuthProvider {
     }
 
     pub async fn authenticate(&self, username: &str, password: &str) -> Result<AuthSucc> {
-        let request = AuthRequest::new(username, password, self)?;
-        let request = request.into_encrypted_request(&self.aes_key)?;
+        let request = AuthRequest::new(username, password, self, None)?;
+        let request = request.into_encrypted_request(self)?;
 
         let response = reqwest::Client::new()
-            .post(self.auth_db_url.clone())
+            .post(self.auth_db_path.clone())
             .body(request)
             .send()
             .await?;
@@ -102,12 +150,30 @@ impl AuthProvider {
 
         result.success.context("Internal error: Empty response")
     }
+    pub fn encrypt_aes<T: AsRef<str>>(&self, content: T) -> Result<String> {
+        encrypt_aes(&self.aes_key, content.as_ref())
+    }
+
+    pub fn decrypt_aes<T: AsRef<[u8]>>(&self, content: T) -> Result<String> {
+        decrypt_aes(&self.aes_key, content.as_ref())
+    }
+    pub fn gen_sig(&self, a: &str, b: &str) -> Result<String> {
+        let totp = gen_totp(&self.totp)?;
+        Ok(hash_256(format!("{}ssdd{}{}", totp, a, b)))
+    }
+    pub fn db_path(&self) -> &str {
+        &self.auth_db_path
+    }
+    pub fn get_pw(&self) -> &[u8] {
+        &self.aes_key
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
     use totp_rs::{Algorithm, Secret};
 
     #[test]
@@ -155,8 +221,8 @@ mod tests {
 
         let provider = AuthProvider::init(server_url, totp, aes_key)?;
 
-        let req = AuthRequest::new("user", "pass", &provider)?;
-        let req = req.into_encrypted_request(&provider.aes_key)?;
+        let req = AuthRequest::new("user", "pass", &provider, None)?;
+        let req = req.into_encrypted_request(&provider)?;
         let resp_json = json!({
             "success": {
                 "name": "John Doe",

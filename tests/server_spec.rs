@@ -82,20 +82,21 @@ pub mod test {
 #[cfg(test)]
 mod server_spec {
     use lms::cli::server::Server;
+    use lms_auth::auth::{AuthRequest, AuthResult, SignUpDet};
+    use lms_auth::local_crypto::hash_256;
+    use lms_core::authdb::auth_actors::{Authority, User};
+    use lms_core::config::config_module::ConfigModule;
     use lms_core::config::reader::ConfigReader;
     use reqwest::Client;
 
-    #[tokio::test]
-    async fn invalid_route() {
-        let url = "http://localhost:19194/invalid";
+    struct TestHttp {
+        url: String,
+        method: reqwest::Method,
+        body: String,
+    }
 
-        let runtime = crate::test::init();
-        let reader = ConfigReader::init(runtime);
-        let config = reader
-            .read("tests/server/config_notfound.json")
-            .await
-            .unwrap();
-        let mut server = Server::new(config);
+    async fn test_req(tests: Vec<TestHttp>, config_module: ConfigModule) {
+        let mut server = Server::new(config_module);
         let server_up_receiver = server.server_up_receiver();
 
         tokio::spawn(async move {
@@ -106,18 +107,122 @@ mod server_spec {
             .await
             .expect("Server did not start up correctly");
 
-        let client = Client::new();
+        for test in tests {
+            let client = Client::new();
 
-        let task: tokio::task::JoinHandle<Result<_, anyhow::Error>> = tokio::spawn(async move {
-            let response = client.get(url).send().await?;
-            let response_body = response.text().await?;
-            Ok(response_body)
-        });
+            let task: tokio::task::JoinHandle<Result<_, anyhow::Error>> =
+                tokio::spawn(async move {
+                    let mut req = reqwest::Request::new(test.method, test.url.parse()?);
+                    *req.body_mut() = Some(reqwest::Body::from(test.body));
 
-        let response = task
-            .await
-            .expect("Spawned task should success")
-            .expect("Request should success");
-        insta::assert_snapshot!(response);
+                    let response = client.execute(req).await?;
+                    let response_body = response.text().await?;
+                    Ok(response_body)
+                });
+
+            let response = task
+                .await
+                .expect("Spawned task should success")
+                .expect("Request should success");
+            match serde_json::from_str::<AuthResult>(&response) {
+                Ok(mut response) => {
+                    if let Some(succ) = response.success.as_mut() {
+                        succ.token = String::new(); // can't assert totp token
+                    }
+                    insta::assert_snapshot!(serde_json::to_string_pretty(&response).unwrap());
+                }
+                Err(_) => {
+                    insta::assert_snapshot!(response);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_server() -> anyhow::Result<()> {
+        let runtime = crate::test::init();
+        let reader = ConfigReader::init(runtime);
+        let mut config_module = reader.read("tests/server/config.json").await?;
+        if let Some(users) = config_module.extensions.users.as_mut() {
+            users.insert(User {
+                username: "admin".to_string(),
+                name: "admin".to_string(),
+                password: hash_256("admin"),
+                authority: Authority::Admin,
+            });
+        }
+        let auth = config_module.extensions.auth.as_ref().unwrap();
+
+        let auth_req = AuthRequest::new(
+            "new",
+            "notNewbie",
+            auth,
+            Some(SignUpDet {
+                name: "newbie".to_string(),
+                authority: 2,
+                admin_username: "admin".to_string(),
+                admin_password: "admin".to_string(),
+            }),
+        )?;
+
+        let auth_req_invalid_authority = AuthRequest::new(
+            "new",
+            "notNewbie",
+            auth,
+            Some(SignUpDet {
+                name: "newbie".to_string(),
+                authority: 3,
+                admin_username: "admin".to_string(),
+                admin_password: "admin".to_string(),
+            }),
+        )?;
+
+        let auth_req_invalid_pass = AuthRequest::new("new", "notNewbieIncorrectPass", auth, None)?;
+
+        let auth_req_no_such_user = AuthRequest::new("noSuchUser", "notNewbie", auth, None)?;
+
+        test_req(
+            vec![
+                TestHttp {
+                    url: "http://localhost:19194/invalid".to_string(),
+                    method: reqwest::Method::GET,
+                    body: "".to_string(),
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: "invalid aes".to_string(),
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: auth.encrypt_aes("invalid body")?,
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: auth_req.into_encrypted_request(auth)?,
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: auth_req_invalid_authority.into_encrypted_request(auth)?,
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: auth_req_no_such_user.into_encrypted_request(auth)?,
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: auth_req_invalid_pass.into_encrypted_request(auth)?,
+                },
+            ],
+            config_module,
+        )
+        .await;
+
+        Ok(())
     }
 }
