@@ -8,6 +8,7 @@ use totp_rs::{Secret, TOTP};
 // TODO: ADD DOCS!!
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
     pub server: Server,
     pub auth: AuthInfo,
@@ -26,6 +27,7 @@ impl Config {
     }
 }
 #[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct Server {
     #[serde(default, skip_serializing_if = "is_default")]
     pub host: Option<String>,
@@ -46,6 +48,7 @@ impl Server {
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct AuthInfo {
     pub auth_db_path: String,
     pub totp: TotpSettings,
@@ -53,6 +56,7 @@ pub struct AuthInfo {
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct TotpSettings {
     pub totp_secret: String,
     #[serde(default, skip_serializing_if = "is_default")]
