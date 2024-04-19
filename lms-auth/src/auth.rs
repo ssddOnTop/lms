@@ -246,40 +246,4 @@ mod tests {
 
         Ok(())
     }
-
-    /*    #[tokio::test]
-    async fn test_req_gen() -> Result<()> {
-        // TODO DROP THIS
-        let totp = TOTP::new(
-            Algorithm::SHA1,
-            6,
-            1,
-            30,
-            Secret::Raw("base32encodedkey".as_bytes().to_vec()).to_bytes()?,
-        )?;
-        let auth = AuthProvider::init(
-            "/home/ssdd/RustroverProjects/lms/auth".to_string(),
-            totp,
-            hash_256("32bytebase64encodedkey"),
-        )?;
-
-        let inst = Instant::now();
-        for _ in 0..10000 {
-            let signup = SignUpDet {
-                name: "Sapan".to_string(),
-                authority: 1,
-                admin_username: "xadmin".to_string(),
-                admin_password: "xnotpran".to_string(),
-            };
-            let req = AuthRequest::new("sapan", "pass", &auth, Some(signup))?;
-            let resp = reqwest::Client::new()
-                .post("http://localhost:19194/auth")
-                .body(req.into_encrypted_request(&auth)?)
-                .send()
-                .await?;
-        }
-
-        println!("{:?}", inst.elapsed().as_secs_f64());
-        Ok(())
-    }*/
 }

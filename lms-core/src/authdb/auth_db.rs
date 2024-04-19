@@ -41,7 +41,13 @@ impl AuthDB {
     }
 
     async fn signup(&mut self, req: AuthRequest) -> AuthResult {
-        let signup_details = req.signup_details.unwrap();
+        let signup_details = req.signup_details;
+
+        let signup_details = match signup_details {
+            Some(signup_details) => signup_details,
+            None => return auth_err("No necessary signup details found"),
+        };
+
         match verify(
             &signup_details.admin_username,
             &signup_details.admin_password,
@@ -103,15 +109,16 @@ pub async fn user_entry(app_context: &AppContext, users: Users) -> Result<Users>
         let url = url::Url::parse(db_path)?;
         let mut req = Request::new(Method::POST, url);
 
-        let user = serde_json::to_string(&users)?;
-        *req.body_mut() = Some(Body::from(
-            json!({
-                "operation": "put_user",
-                "users": user,
-                "pw": &password
-            })
-            .to_string(),
-        ));
+        let users = serde_json::to_string(&users)?;
+        // TODO (optional) encrypt users before sending
+        let resp = json!({
+            "operation": "put_user",
+            "users": users,
+            "pw": &password
+        })
+        .to_string();
+
+        *req.body_mut() = Some(Body::from(resp));
 
         let result = app_context.runtime.http.execute(req).await?;
         let users = serde_json::from_slice::<Users>(&result.body)?;
@@ -168,15 +175,19 @@ mod tests {
 
     use crate::app_ctx::AppContext;
     use crate::authdb::auth_actors::{Authority, User, Users};
-    use crate::authdb::auth_db::AuthDB;
+    use crate::authdb::auth_db::{user_entry, AuthDB};
     use crate::blueprint::Blueprint;
     use crate::config::config_module::ConfigModule;
 
-    async fn get_db() -> anyhow::Result<AuthDB> {
+    fn start_mock_server() -> httpmock::MockServer {
+        httpmock::MockServer::start()
+    }
+
+    fn app_ctx<T: AsRef<str>>(db_path: T) -> anyhow::Result<AppContext> {
         let mut module = ConfigModule::default();
         module.auth.aes_key = "32bytebase64encodedkey".to_string();
         module.auth.totp.totp_secret = "base32encodedkey".to_string();
-        module.auth.auth_db_path = "foobar".to_string();
+        module.auth.auth_db_path = db_path.as_ref().to_string();
         module.extensions.users = Some(Users::default());
         let totp = module.config.auth.totp.clone().into_totp()?;
         let auth = AuthProvider::init(
@@ -189,7 +200,10 @@ mod tests {
         let blueprint = Blueprint::try_from(module)?;
         let runtime = crate::runtime::tests::init();
         let app_ctx = AppContext { blueprint, runtime };
-        let app_ctx = Arc::new(app_ctx);
+        Ok(app_ctx)
+    }
+    async fn get_db() -> anyhow::Result<AuthDB> {
+        let app_ctx = Arc::new(app_ctx("foobar")?);
         let auth_db = AuthDB::init(app_ctx).await?;
         Ok(auth_db)
     }
@@ -222,6 +236,40 @@ mod tests {
         assert!(result.success.is_some());
         let succ = result.success.unwrap();
         assert_eq!(succ.name, "newbie");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_signup_fail() -> anyhow::Result<()> {
+        let mut auth_db = get_db().await?;
+        let auth_req = AuthRequest::new(
+            "new",
+            "bie",
+            &auth_db.app_context.blueprint.extensions.auth,
+            None,
+        )?;
+
+        let result = auth_db.signup(auth_req).await;
+        assert!(result.error.is_some());
+        let err = result.error.unwrap();
+        assert_eq!(err.message, "No necessary signup details found");
+        Ok(())
+    }
+    #[tokio::test]
+    async fn test_user_entry_url() -> anyhow::Result<()> {
+        let server = start_mock_server();
+        server.mock(|w, t| {
+            w.method(httpmock::Method::POST)
+                .path("/")
+                .body(r#"{"operation":"put_user","pw":"db1a2fca194f1034c91ea5d6a2df0c1a","users":"{\"users\":{}}"}"#)
+            ;
+            t.status(200).body(r#"{"users":{}}"#);
+        });
+        let app_ctx = app_ctx(server.base_url())?;
+        let expected = Users::default();
+        let actual = user_entry(&app_ctx, expected.clone()).await?;
+
+        assert_eq!(expected, actual);
         Ok(())
     }
     #[tokio::test]
