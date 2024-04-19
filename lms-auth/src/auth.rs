@@ -103,14 +103,11 @@ impl AuthRequest {
         auth_provider: &AuthProvider,
     ) -> Result<Self> {
         let req = auth_provider.decrypt_aes(req)?;
-        println!("hx");
         let req = serde_json::from_str::<Self>(&req)?;
         Ok(req)
     }
     pub fn verify_sig(&self, auth_provider: &AuthProvider) -> bool {
         let sig = auth_provider.gen_sig(&self.username, &self.password);
-        println!("L: {:?}", sig);
-        println!("R: {}", self.signature);
         sig.map(|v| v.eq(&self.signature)).unwrap_or(false)
     }
 }
@@ -279,13 +276,13 @@ mod tests {
         )?;
 
         let signup = SignUpDet {
-            name: "fooo".to_string(),
-            authority: 0,
-            admin_username: "admin".to_string(),
-            admin_password: "tmppw".to_string(),
+            name: "Sapan".to_string(),
+            authority: 1,
+            admin_username: "xadmin".to_string(),
+            admin_password: "xnotpran".to_string(),
         };
 
-        let req = AuthRequest::new("user", "pass", &auth, Some(signup))?;
+        let req = AuthRequest::new("sapan", "pass", &auth, Some(signup))?;
         let resp = reqwest::Client::new()
             .post("http://localhost:19194/auth")
             .body(req.into_encrypted_request(&auth)?)
