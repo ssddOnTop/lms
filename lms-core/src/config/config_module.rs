@@ -6,6 +6,7 @@ use lms_auth::auth::AuthProvider;
 use reqwest::{Body, Request};
 use serde_json::json;
 use std::ops::{Deref, DerefMut};
+use std::path::Path;
 
 #[derive(Default, Debug, Clone)]
 pub struct ConfigModule {
@@ -45,13 +46,19 @@ impl From<Config> for ConfigModule {
 }
 
 impl ConfigModule {
-    pub async fn resolve(self, target_runtime: &TargetRuntime) -> anyhow::Result<Self> {
+    pub async fn resolve(
+        mut self,
+        target_runtime: &TargetRuntime,
+        parent_dir: Option<&Path>,
+    ) -> anyhow::Result<Self> {
         let totp = self.config.auth.totp.clone().into_totp()?;
 
         assert!(
             self.config.auth.aes_key.len() > 8,
             "db_file_password must be at least 8 characters long"
         );
+        self.config.auth.auth_db_path =
+            ConfigModule::resolve_path(&self.config.auth.auth_db_path, parent_dir);
 
         let auth = AuthProvider::init(
             self.config.auth.auth_db_path.clone(),
@@ -99,5 +106,13 @@ impl ConfigModule {
             },
             ..self
         })
+    }
+    fn resolve_path(src: &str, root_dir: Option<&Path>) -> String {
+        if Path::new(&src).is_absolute() {
+            src.to_string()
+        } else {
+            let path = root_dir.unwrap_or(Path::new(""));
+            path.join(src).to_string_lossy().to_string()
+        }
     }
 }

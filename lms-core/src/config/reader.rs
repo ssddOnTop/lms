@@ -4,6 +4,7 @@ use crate::config::config_module::ConfigModule;
 use crate::config::Config;
 use crate::runtime::TargetRuntime;
 use reqwest::Url;
+use std::path::Path;
 
 /// Reads the configuration from a file or from an HTTP URL and resolves all linked extensions to create a ConfigModule.
 pub struct ConfigReader {
@@ -26,7 +27,10 @@ impl ConfigReader {
     pub async fn read<T: AsRef<str>>(&self, file: T) -> anyhow::Result<ConfigModule> {
         let file = self.read_file(file).await?;
         let config = Config::from_json(&file.content)?;
-        let config_module = ConfigModule::from(config).resolve(&self.runtime).await?;
+        let parent = Path::new(&file.path).parent();
+        let config_module = ConfigModule::from(config)
+            .resolve(&self.runtime, parent)
+            .await?;
 
         Ok(config_module)
     }
