@@ -4,10 +4,9 @@
     "host": "http://invalidhost"
   },
   "auth": {
-    "auth_url": "",
     "totp": {
-      "totp_secret": "base32encodedkey"
+      "totpSecret": "base32encodedkey"
     },
-    "aes_key": "32bytebase64encodedkey"
+    "aesKey": "32bytebase64encodedkey",
   }
 }

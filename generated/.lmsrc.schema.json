@@ -11,10 +11,10 @@
     },
     "AuthInfo": {
       "properties": {
-        "aes_key": {
+        "aesKey": {
           "type": "string"
         },
-        "auth_db_path": {
+        "authDbPath": {
           "type": "string"
         },
         "totp": {
@@ -22,8 +22,8 @@
         }
       },
       "required": [
-        "aes_key",
-        "auth_db_path",
+        "aesKey",
+        "authDbPath",
         "totp"
       ],
       "type": "object"
@@ -44,7 +44,7 @@
             "null"
           ]
         },
-        "request_timeout": {
+        "requestTimeout": {
           "format": "uint64",
           "minimum": 0.0,
           "type": [
@@ -52,7 +52,7 @@
             "null"
           ]
         },
-        "timeout_key": {
+        "timeoutKey": {
           "type": [
             "string",
             "null"
@@ -97,12 +97,12 @@
             "null"
           ]
         },
-        "totp_secret": {
+        "totpSecret": {
           "type": "string"
         }
       },
       "required": [
-        "totp_secret"
+        "totpSecret"
       ],
       "type": "object"
     }
