@@ -108,30 +108,11 @@ fn validate_config(
         ));
     }
 
-    if !config.auth.auth_db_path.starts_with("http") {
-        // TODO FIXME
-        // we can't perform std::fs here. lms-core must be platform independent.
-        // proposal: create ConfigModule with resolve function which initiates file for auth db.
-        // we still need to figure out how to handle the file path.
-
-        /*let pb = PathBuf::from(&config.auth.auth_db_path);
-        if !pb.exists() {
-            return Err(anyhow!("Auth DB path is not a valid URL or file path"));
-        } else {
-            let users = auth_provider.decrypt_aes(std::fs::read_to_string(&config.auth.auth_db_path)?).map_err(|_| anyhow!("Failed to decrypt Auth DB with given key"))?;
-            let _: Users = serde_json::from_str(&users).map_err(|_| anyhow!("Failed to parse Auth DB"))?;
-        }*/
-    } else {
+    if config.auth.auth_db_path.starts_with("http") {
         url::Url::parse(&config.auth.auth_db_path)
             .map_err(|_| anyhow!("Invalid URL for AuthDB"))?;
-        /*
-        TODO FIXME
-        let req = reqwest::Client::new().post(url).body(reqwest::Body::default());
-        let res = req.send().await?;
-        if !res.status().is_success() {
-            return Err(anyhow!("Failed to connect to Auth DB"));
-        }*/
     }
+
     if config.auth.aes_key.is_empty() || config.auth.aes_key.len() < 8 {
         return Err(anyhow::anyhow!(
             "aes_key is required and must be 8 characters long"

@@ -1,7 +1,7 @@
 {
   "server": {
     "port": 19194,
-    "host": "localhost"
+    "host": "http://invalidhost"
   },
   "auth": {
     "auth_url": "",
