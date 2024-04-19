@@ -165,6 +165,20 @@ mod server_spec {
             }),
         )?;
 
+        let auth_req_invalid_authority = AuthRequest::new(
+            "new",
+            "notNewbie",
+            auth,
+            Some(SignUpDet {
+                name: "newbie".to_string(),
+                authority: 3,
+                admin_username: "admin".to_string(),
+                admin_password: "admin".to_string(),
+            }),
+        )?;
+
+        let auth_req_no_such_user = AuthRequest::new("noSuchUser", "notNewbie", auth, None)?;
+
         test_req(
             vec![
                 TestHttp {
@@ -186,6 +200,16 @@ mod server_spec {
                     url: "http://localhost:19194/auth".to_string(),
                     method: reqwest::Method::POST,
                     body: auth_req.into_encrypted_request(auth)?,
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: auth_req_invalid_authority.into_encrypted_request(auth)?,
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: auth_req_no_such_user.into_encrypted_request(auth)?,
                 },
             ],
             config_module,

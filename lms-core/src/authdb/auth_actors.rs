@@ -30,7 +30,7 @@ impl Authority {
             0 => Ok(Authority::Admin),
             1 => Ok(Authority::Faculty),
             2 => Ok(Authority::Student),
-            _ => Err(anyhow!("Unable to serialize")),
+            _ => Err(anyhow!("Unable to determine Authority")),
         }
     }
 }
