@@ -6,6 +6,7 @@ use lms_auth::auth::AuthProvider;
 use reqwest::{Body, Request};
 use serde_json::json;
 use std::ops::{Deref, DerefMut};
+use std::path::Path;
 
 #[derive(Default, Debug, Clone)]
 pub struct ConfigModule {
@@ -45,13 +46,18 @@ impl From<Config> for ConfigModule {
 }
 
 impl ConfigModule {
-    pub async fn resolve(self, target_runtime: &TargetRuntime) -> anyhow::Result<Self> {
+    pub async fn resolve(
+        mut self,
+        target_runtime: &TargetRuntime,
+        parent_dir: Option<&Path>,
+    ) -> anyhow::Result<Self> {
         let totp = self.config.auth.totp.clone().into_totp()?;
+        if self.config.auth.aes_key.len() < 9 {
+            anyhow::bail!("authDbPath must be at least 8 characters long");
+        }
 
-        assert!(
-            self.config.auth.aes_key.len() > 8,
-            "db_file_password must be at least 8 characters long"
-        );
+        self.config.auth.auth_db_path =
+            ConfigModule::resolve_path(&self.config.auth.auth_db_path, parent_dir);
 
         let auth = AuthProvider::init(
             self.config.auth.auth_db_path.clone(),
@@ -99,5 +105,34 @@ impl ConfigModule {
             },
             ..self
         })
+    }
+    fn resolve_path(src: &str, root_dir: Option<&Path>) -> String {
+        if Path::new(&src).is_absolute() {
+            src.to_string()
+        } else {
+            let path = root_dir.unwrap_or(Path::new(""));
+            path.join(src).to_string_lossy().to_string()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::config_module::ConfigModule;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn test_relative_path() {
+        let path_dir = Path::new("abc/xyz");
+        let file_relative = "foo/bar/my.proto";
+        let file_absolute = "/foo/bar/my.proto";
+        assert_eq!(
+            path_dir.to_path_buf().join(file_relative),
+            PathBuf::from(ConfigModule::resolve_path(file_relative, Some(path_dir)))
+        );
+        assert_eq!(
+            "/foo/bar/my.proto",
+            ConfigModule::resolve_path(file_absolute, Some(path_dir))
+        );
     }
 }

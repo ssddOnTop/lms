@@ -6,7 +6,7 @@
     "workers": 4
   },
   "auth": {
-    "auth_db_path": "tests/server/auth",
+    "auth_db_path": "auth",
     "totp": {
       "totp_secret": "base32encodedkey"
     },
