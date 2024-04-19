@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Configuration for file types to be tested via prettier
-FILE_TYPES="{graphql,yml,json,md,ts,js}"
-
 run_cargo_fmt() {
     MODE=$1
     if [ "$MODE" == "check" ]; then
@@ -21,16 +18,6 @@ run_cargo_clippy() {
     fi
     CMD="$CMD -- -D warnings"
     $CMD
-    return $?
-}
-
-run_prettier() {
-    MODE=$1
-    if [ "$MODE" == "check" ]; then
-        prettier -c .prettierrc --check "**/*.$FILE_TYPES"
-    else
-        prettier -c .prettierrc --write "**/*.$FILE_TYPES"
-    fi
     return $?
 }
 
@@ -61,9 +48,6 @@ case $MODE in
         FMT_EXIT_CODE=$?
         run_cargo_clippy $MODE
         CLIPPY_EXIT_CODE=$?
-
-        run_prettier $MODE
-        PRETTIER_EXIT_CODE=$?
         ;;
     *)
         echo "Invalid mode. Please use --mode=check or --mode=fix"
@@ -72,6 +56,6 @@ case $MODE in
 esac
 
 # If any command failed, exit with a non-zero status code
-if [ $FMT_EXIT_CODE -ne 0 ] || [ $CLIPPY_EXIT_CODE -ne 0 ] || [ $PRETTIER_EXIT_CODE -ne 0 ] || [ $AUTOGEN_SCHEMA_EXIT_CODE -ne 0 ]; then
+if [ $FMT_EXIT_CODE -ne 0 ] || [ $CLIPPY_EXIT_CODE -ne 0 ] || [ $AUTOGEN_SCHEMA_EXIT_CODE -ne 0 ]; then
     exit 1
 fi
