@@ -68,10 +68,7 @@ impl AuthDB {
                         match user_entry(self.app_context.deref(), self.users.clone()).await {
                             Ok(users) => self.users = users,
                             Err(e) => {
-                                panic!(
-                                    "Unable to perform IO. Stopping the server with error: {}",
-                                    e
-                                );
+                                return auth_err(format!("Unable to register user: {}", e));
                             }
                         };
                         let token = self.app_context.blueprint.server.token.generate_current();
@@ -156,6 +153,7 @@ fn auth_err<T: AsRef<str>>(message: T) -> AuthResult {
             message: message.as_ref().to_string(),
         }),
         success: None,
+        code: 500,
     }
 }
 
@@ -163,6 +161,7 @@ fn auth_succ(name: String, token: String) -> AuthResult {
     AuthResult {
         error: None,
         success: Some(AuthSucc { name, token }),
+        code: 200,
     }
 }
 

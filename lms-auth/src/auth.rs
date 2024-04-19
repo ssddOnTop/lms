@@ -39,6 +39,8 @@ pub struct AuthResult {
 
     #[serde(default, skip_serializing_if = "is_default")]
     pub success: Option<AuthSucc>,
+    #[serde(default)]
+    pub code: u16,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -111,7 +113,7 @@ impl AuthResult {
     pub fn into_hyper_response(self) -> Result<hyper::Response<Full<bytes::Bytes>>> {
         let body = serde_json::to_string(&self)?;
         let response = hyper::Response::builder()
-            .status(200)
+            .status(self.code)
             .header("Content-Type", "application/json")
             .body(Full::new(bytes::Bytes::from(body)))?;
         Ok(response)
