@@ -13,13 +13,12 @@ pub struct ServerConfig {
 }
 impl ServerConfig {
     pub async fn new(blueprint: Blueprint) -> Result<Self> {
-        let users = blueprint.extensions.users.clone();
         let app_ctx = AppContext {
             runtime: rt::init(),
             blueprint,
         };
         let app_ctx = Arc::new(app_ctx);
-        let auth_db = AuthDB::init(app_ctx.clone(), users).await?;
+        let auth_db = AuthDB::init(app_ctx.clone()).await?;
         let auth_db = Arc::new(RwLock::new(auth_db));
 
         Ok(Self { app_ctx, auth_db })

@@ -5,7 +5,7 @@ use hyper::Method;
 use lms_auth::auth::AuthProvider;
 use reqwest::{Body, Request};
 use serde_json::json;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 #[derive(Default, Debug, Clone)]
 pub struct ConfigModule {
@@ -23,6 +23,12 @@ impl Deref for ConfigModule {
     type Target = Config;
     fn deref(&self) -> &Self::Target {
         &self.config
+    }
+}
+
+impl DerefMut for ConfigModule {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.config
     }
 }
 

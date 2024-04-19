@@ -69,7 +69,7 @@ pub struct AuthError {
 }
 
 impl AuthRequest {
-    fn new<T: AsRef<str>>(
+    pub fn new<T: AsRef<str>>(
         username: T,
         password: T,
         provider: &AuthProvider,
@@ -92,7 +92,7 @@ impl AuthRequest {
             signup_details,
         })
     }
-    fn into_encrypted_request(self, auth_provider: &AuthProvider) -> Result<String> {
+    pub fn into_encrypted_request(self, auth_provider: &AuthProvider) -> Result<String> {
         let request = auth_provider
             .encrypt_aes(serde_json::to_string(&self)?)
             .map_err(|_| anyhow!("Unable to encrypt request"))?;
@@ -184,6 +184,7 @@ impl AuthProvider {
 mod tests {
     use super::*;
     use serde_json::json;
+
     use totp_rs::{Algorithm, Secret};
 
     #[test]
@@ -261,7 +262,8 @@ mod tests {
     }
 
     /*    #[tokio::test]
-    async fn test_req_gen() -> Result<()> { // TODO DROP THIS
+    async fn test_req_gen() -> Result<()> {
+        // TODO DROP THIS
         let totp = TOTP::new(
             Algorithm::SHA1,
             6,
@@ -275,20 +277,23 @@ mod tests {
             hash_256("32bytebase64encodedkey"),
         )?;
 
-        let signup = SignUpDet {
-            name: "Sapan".to_string(),
-            authority: 1,
-            admin_username: "xadmin".to_string(),
-            admin_password: "xnotpran".to_string(),
-        };
+        let inst = Instant::now();
+        for _ in 0..10000 {
+            let signup = SignUpDet {
+                name: "Sapan".to_string(),
+                authority: 1,
+                admin_username: "xadmin".to_string(),
+                admin_password: "xnotpran".to_string(),
+            };
+            let req = AuthRequest::new("sapan", "pass", &auth, Some(signup))?;
+            let resp = reqwest::Client::new()
+                .post("http://localhost:19194/auth")
+                .body(req.into_encrypted_request(&auth)?)
+                .send()
+                .await?;
+        }
 
-        let req = AuthRequest::new("sapan", "pass", &auth, Some(signup))?;
-        let resp = reqwest::Client::new()
-            .post("http://localhost:19194/auth")
-            .body(req.into_encrypted_request(&auth)?)
-            .send()
-            .await?;
-        println!("{:?}", resp.text().await);
+        println!("{:?}", inst.elapsed().as_secs_f64());
         Ok(())
     }*/
 }

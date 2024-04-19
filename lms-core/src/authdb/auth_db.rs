@@ -1,12 +1,14 @@
-use crate::authdb::auth_actors::{Authority, User, Users};
-use anyhow::{anyhow, Context, Result};
-use lms_auth::auth::{AuthError, AuthRequest, AuthResult, AuthSucc};
 use std::ops::Deref;
+use std::sync::Arc;
 
-use crate::app_ctx::AppContext;
+use anyhow::{anyhow, Context, Result};
 use reqwest::{Body, Method, Request};
 use serde_json::json;
-use std::sync::Arc;
+
+use lms_auth::auth::{AuthError, AuthRequest, AuthResult, AuthSucc};
+
+use crate::app_ctx::AppContext;
+use crate::authdb::auth_actors::{Authority, User, Users};
 
 #[derive(Clone)]
 pub struct AuthDB {
@@ -15,7 +17,8 @@ pub struct AuthDB {
 }
 
 impl AuthDB {
-    pub async fn init(app_context: Arc<AppContext>, users: Users) -> Result<Self> {
+    pub async fn init(app_context: Arc<AppContext>) -> Result<Self> {
+        let users = app_context.blueprint.extensions.users.clone();
         Ok(Self { users, app_context })
     }
     pub async fn handle_request(&mut self, body: bytes::Bytes) -> AuthResult {
@@ -153,5 +156,96 @@ fn auth_succ(name: String, token: String) -> AuthResult {
     AuthResult {
         error: None,
         success: Some(AuthSucc { name, token }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use lms_auth::auth::{AuthProvider, AuthRequest, SignUpDet};
+    use lms_auth::local_crypto::hash_256;
+
+    use crate::app_ctx::AppContext;
+    use crate::authdb::auth_actors::{Authority, User, Users};
+    use crate::authdb::auth_db::AuthDB;
+    use crate::blueprint::Blueprint;
+    use crate::config::config_module::ConfigModule;
+
+    async fn get_db() -> anyhow::Result<AuthDB> {
+        let mut module = ConfigModule::default();
+        module.auth.aes_key = "32bytebase64encodedkey".to_string();
+        module.auth.totp.totp_secret = "base32encodedkey".to_string();
+        module.auth.auth_db_path = "foobar".to_string();
+        module.extensions.users = Some(Users::default());
+        let totp = module.config.auth.totp.clone().into_totp()?;
+        let auth = AuthProvider::init(
+            module.config.auth.auth_db_path.clone(),
+            totp,
+            hash_256(&module.config.auth.aes_key).clone(),
+        )?;
+        module.extensions.auth = Some(auth);
+
+        let blueprint = Blueprint::try_from(module)?;
+        let runtime = crate::runtime::tests::init();
+        let app_ctx = AppContext { blueprint, runtime };
+        let app_ctx = Arc::new(app_ctx);
+        let auth_db = AuthDB::init(app_ctx).await?;
+        Ok(auth_db)
+    }
+
+    #[tokio::test]
+    async fn test_signup() -> anyhow::Result<()> {
+        let mut auth_db = get_db().await?;
+        let admin = User {
+            username: "admin".to_string(),
+            name: "admin".to_string(),
+            password: hash_256("admin"),
+            authority: Authority::Admin,
+        };
+        auth_db.users.insert(admin);
+        let signup = SignUpDet {
+            name: "newbie".to_string(),
+            authority: 2,                        // is student
+            admin_username: "admin".to_string(), // siged by: admin
+            admin_password: "admin".to_string(),
+        };
+
+        let auth_req = AuthRequest::new(
+            "new",
+            "bie",
+            &auth_db.app_context.blueprint.extensions.auth,
+            Some(signup),
+        )?;
+        let result = auth_db.signup(auth_req).await;
+
+        assert!(result.success.is_some());
+        let succ = result.success.unwrap();
+        assert_eq!(succ.name, "newbie");
+        Ok(())
+    }
+    #[tokio::test]
+    async fn test_login() -> anyhow::Result<()> {
+        let mut auth_db = get_db().await?;
+
+        let newbie = User {
+            username: "newbie".to_string(),
+            name: "newbie".to_string(),
+            password: hash_256("newbie"),
+            authority: Authority::Student,
+        };
+        auth_db.users.insert(newbie);
+
+        let auth_req = AuthRequest::new(
+            "newbie",
+            "newbie",
+            &auth_db.app_context.blueprint.extensions.auth,
+            None,
+        )?;
+        let result = auth_db.login(auth_req).await;
+        assert!(result.success.is_some());
+        let succ = result.success.unwrap();
+        assert_eq!(succ.name, "newbie");
+        Ok(())
     }
 }
