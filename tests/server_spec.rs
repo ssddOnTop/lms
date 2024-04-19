@@ -177,6 +177,13 @@ mod server_spec {
             }),
         )?;
 
+        let auth_req_invalid_pass = AuthRequest::new(
+            "new",
+            "notNewbieIncorrectPass",
+            auth,
+            None,
+        )?;
+
         let auth_req_no_such_user = AuthRequest::new("noSuchUser", "notNewbie", auth, None)?;
 
         test_req(
@@ -210,6 +217,11 @@ mod server_spec {
                     url: "http://localhost:19194/auth".to_string(),
                     method: reqwest::Method::POST,
                     body: auth_req_no_such_user.into_encrypted_request(auth)?,
+                },
+                TestHttp {
+                    url: "http://localhost:19194/auth".to_string(),
+                    method: reqwest::Method::POST,
+                    body: auth_req_invalid_pass.into_encrypted_request(auth)?,
                 },
             ],
             config_module,
