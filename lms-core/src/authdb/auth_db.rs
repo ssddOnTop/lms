@@ -268,8 +268,15 @@ mod tests {
             None,
         )?;
 
-        let encrypted_req = auth_db.app_context.blueprint.extensions.auth.encrypt_aes(serde_json::to_string(&auth_req)?)?;
-        let result = auth_db.handle_request(bytes::Bytes::from(encrypted_req)).await;
+        let encrypted_req = auth_db
+            .app_context
+            .blueprint
+            .extensions
+            .auth
+            .encrypt_aes(serde_json::to_string(&auth_req)?)?;
+        let result = auth_db
+            .handle_request(bytes::Bytes::from(encrypted_req))
+            .await;
 
         assert!(result.success.is_some());
         let succ = result.success.unwrap();
@@ -301,8 +308,15 @@ mod tests {
             Some(signup),
         )?;
 
-        let encrypted_req = auth_db.app_context.blueprint.extensions.auth.encrypt_aes(serde_json::to_string(&auth_req)?)?;
-        let result = auth_db.handle_request(bytes::Bytes::from(encrypted_req)).await;
+        let encrypted_req = auth_db
+            .app_context
+            .blueprint
+            .extensions
+            .auth
+            .encrypt_aes(serde_json::to_string(&auth_req)?)?;
+        let result = auth_db
+            .handle_request(bytes::Bytes::from(encrypted_req))
+            .await;
 
         assert!(result.success.is_some());
         let succ = result.success.unwrap();

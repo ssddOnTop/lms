@@ -3,7 +3,7 @@ use anyhow::{anyhow, Context, Result};
 use http_body_util::Full;
 use libaes::AES_256_KEY_LEN;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
+
 use totp_rs::TOTP;
 
 use crate::local_crypto::{decrypt_aes, encrypt_aes, gen_totp, hash_128, hash_256};
@@ -13,20 +13,6 @@ pub struct AuthProvider {
     auth_db_path: String,
     totp: TOTP,
     aes_key: Vec<u8>,
-}
-
-pub enum RequestType {
-    Login,
-    Signup,
-}
-
-impl Display for RequestType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RequestType::Login => f.write_str("login"),
-            RequestType::Signup => f.write_str("signup"),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize)]
