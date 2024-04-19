@@ -115,3 +115,24 @@ impl ConfigModule {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::config::config_module::ConfigModule;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn test_relative_path() {
+        let path_dir = Path::new("abc/xyz");
+        let file_relative = "foo/bar/my.proto";
+        let file_absolute = "/foo/bar/my.proto";
+        assert_eq!(
+            path_dir.to_path_buf().join(file_relative),
+            PathBuf::from(ConfigModule::resolve_path(file_relative, Some(path_dir)))
+        );
+        assert_eq!(
+            "/foo/bar/my.proto",
+            ConfigModule::resolve_path(file_absolute, Some(path_dir))
+        );
+    }
+}
