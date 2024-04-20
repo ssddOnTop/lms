@@ -1,9 +1,12 @@
-use std::collections::HashMap;
-use http_body_util::Full;
-use serde::{Deserialize, Serialize};
-use lms_core::is_default;
 use anyhow::{anyhow, Result};
+use http_body_util::Full;
 use lms_auth::auth::AuthProvider;
+use lms_core::is_default;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use dashmap::DashMap;
+use lms_file_db::file_config::{FileHolder, InsertionInfo};
+use lms_file_db::request_handler::FileRequestHandler;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActionsResult {
@@ -34,7 +37,7 @@ pub struct ActionsWrite {
     pub title: String,
     pub description: String,
     #[serde(default, skip_serializing_if = "is_default")]
-    pub files: Option<FileWrite>,
+    pub files: Option<Vec<FileWrite>>,
     #[serde(default, skip_serializing_if = "is_default")]
     pub end_time: Option<u128>,
     pub reference: String,
@@ -48,7 +51,7 @@ pub struct FileWrite {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ActionsActivity {
-    pub actions: HashMap<String, ActionsContent>,
+    pub actions: DashMap<String, ActionsContent>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -58,8 +61,9 @@ pub struct ActionsContent {
 }
 
 impl ActionsActivity {
-    pub fn insert(&mut self, group_id: &str, content_id: &str, is_notif: bool) {
-        // TODO insert it in file-db as well
+    pub async fn insert(&self, group_id: String, info: InsertionInfo, files: Vec<FileHolder>, file_request_handler: &FileRequestHandler) -> Result<()> {
+        let is_notif = files.is_empty();
+        let content_id = file_request_handler.insert(info, files).await;
         self.actions.insert(
             group_id.to_string(),
             ActionsContent {
@@ -67,9 +71,10 @@ impl ActionsActivity {
                 content_id: content_id.to_string(),
             },
         );
+        Ok(())
     }
     pub fn get(&self, group_id: &str) -> Option<&ActionsContent> {
-        self.actions.get(group_id)
+        self.actions.get(group_id).map(|x| x.value())
     }
     /*
      pub fn get_file(&self, group_id: &str) -> Option<&ActionsContent> {

@@ -1,8 +1,8 @@
-mod file_config;
-mod request_handler;
+pub mod file_config;
+pub mod request_handler;
 
 #[cfg(test)]
-pub mod tests {
+pub(crate) mod tests {
     use std::sync::Arc;
     use std::time::SystemTime;
 

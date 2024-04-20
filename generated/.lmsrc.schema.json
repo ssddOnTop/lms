@@ -154,13 +154,17 @@
     },
     "server": {
       "$ref": "#/definitions/Server"
+    },
+    "workingDir": {
+      "type": "string"
     }
   },
   "required": [
     "auth",
     "batches",
     "courses",
-    "server"
+    "server",
+    "workingDir"
   ],
   "title": "Config",
   "type": "object"

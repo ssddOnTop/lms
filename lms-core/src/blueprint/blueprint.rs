@@ -26,6 +26,7 @@ pub struct Server {
     pub port: u16,
     pub hostname: IpAddr,
     pub token: TOTP,
+    pub file_db: String,
 }
 
 impl TryFrom<config::Server> for Server {
@@ -51,6 +52,7 @@ impl TryFrom<config::Server> for Server {
                 server.request_timeout.unwrap_or(86400),
                 Secret::Raw(server.timeout_key.unwrap().as_bytes().to_vec()).to_bytes()?,
             )?,
+            file_db: server.file_db,
         })
     }
 }

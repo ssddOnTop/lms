@@ -8,10 +8,10 @@ use lms_core::is_default;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileHolder {
     pub name: String,
-    pub content: Vec<u8>,
+    pub content: String,
 }
 
 pub struct InsertionInfo {
@@ -21,64 +21,7 @@ pub struct InsertionInfo {
     pub end_time: Option<u128>,
     pub authority: Authority,
 }
-
-impl Serialize for FileHolder {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("FileHolder", 2)?;
-        state.serialize_field("name", &self.name)?;
-        let b64 = BASE64_STANDARD.encode(&self.content);
-        state.serialize_field("content", &b64)?;
-        state.end()
-    }
-}
-
 struct FileHolderVisitor;
-
-impl<'de> serde::de::Visitor<'de> for FileHolderVisitor {
-    type Value = FileHolder;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("struct FileHolder")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
-    where
-        A: serde::de::MapAccess<'de>,
-    {
-        let mut name = None;
-        let mut content = None;
-        while let Some(key) = map.next_key()? {
-            match key {
-                "name" => {
-                    if name.is_some() {
-                        return Err(serde::de::Error::duplicate_field("name"));
-                    }
-                    name = Some(map.next_value()?);
-                }
-                "content" => {
-                    if content.is_some() {
-                        return Err(serde::de::Error::duplicate_field("content"));
-                    }
-                    let b64: String = map.next_value()?;
-                    content = Some(
-                        BASE64_STANDARD
-                            .decode(b64.as_bytes())
-                            .map_err(serde::de::Error::custom)?,
-                    );
-                }
-                _ => {
-                    return Err(serde::de::Error::unknown_field(key, &["name", "content"]));
-                }
-            }
-        }
-        let name = name.ok_or_else(|| serde::de::Error::missing_field("name"))?;
-        let content = content.ok_or_else(|| serde::de::Error::missing_field("content"))?;
-        Ok(FileHolder { name, content })
-    }
-}
 
 impl<'de> Deserialize<'de> for FileHolder {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>

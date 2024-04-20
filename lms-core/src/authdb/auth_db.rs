@@ -85,21 +85,29 @@ impl AuthDB {
     async fn login(&self, req: AuthRequest) -> AuthResult {
         // TODO respond with token
         match verify(&req.username, &req.password, &self.users) {
-            Ok(user) => {
-                match gen_token(&user.username, self.app_context.deref()) {
-                    Ok(token) => auth_succ(user.name, token),
-                    Err(_) => auth_err("Unable to generate token"),
-                }
-            }
+            Ok(user) => match gen_token(&user.username, self.app_context.deref()) {
+                Ok(token) => auth_succ(user.name, token),
+                Err(_) => auth_err("Unable to generate token"),
+            },
             Err(e) => auth_err(e.to_string()),
         }
     }
 }
 
 fn gen_token(username: &str, app_context: &AppContext) -> Result<String> {
-    let token = app_context.blueprint.server.token.generate_current().map_err(|_| anyhow!("Unable to generate token"))?;
+    let token = app_context
+        .blueprint
+        .server
+        .token
+        .generate_current()
+        .map_err(|_| anyhow!("Unable to generate token"))?;
     let format = format!("{}_{}", username, token);
-    let token = app_context.blueprint.extensions.auth.encrypt_aes(format).map_err(|_| anyhow!("Unable to generate token, encryption err"))?;
+    let token = app_context
+        .blueprint
+        .extensions
+        .auth
+        .encrypt_aes(format)
+        .map_err(|_| anyhow!("Unable to generate token, encryption err"))?;
     Ok(token)
 }
 
@@ -119,7 +127,7 @@ pub async fn user_entry(app_context: &AppContext, users: Users) -> Result<Users>
             "users": users,
             "pw": &password
         })
-            .to_string();
+        .to_string();
 
         *req.body_mut() = Some(Body::from(resp));
 

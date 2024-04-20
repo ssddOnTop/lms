@@ -38,9 +38,9 @@ async fn handle_post(
     _app_ctx: Arc<AppContext>,
     auth_db: Arc<RwLock<AuthDB>>,
 ) -> Result<Response<Full<Bytes>>> {
-    let path = req.uri().path();
+    let path = req.uri().path().to_string();
     let body = into_bytes(req).await?;
-    match path {
+    match path.as_str() {
         "/auth" => auth_db
             .write()
             .await
