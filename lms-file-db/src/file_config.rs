@@ -8,7 +8,7 @@ use lms_core::is_default;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FileHolder {
     pub name: String,
     pub content: Vec<u8>,
@@ -153,5 +153,78 @@ impl LocalFileConfig {
     }
     pub fn deserialize(data: &str) -> Result<Self> {
         Ok(serde_json::from_str(data)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+
+    #[test]
+    fn test_serialize_file_holder() {
+        let content = "Hello, world!";
+        let file_holder = FileHolder {
+            name: "example.txt".to_string(),
+            content: Vec::from(content),
+        };
+        let serialized = serde_json::to_string(&file_holder).unwrap();
+        insta::assert_snapshot!(serialized);
+    }
+
+    #[test]
+    fn test_serialize_remote_file_config() {
+        let files = vec![FileHolder {
+            name: "doc.txt".to_string(),
+            content: Vec::from("Sample content"),
+        }];
+        let metadata = Metadata {
+            title: "Data Collection".to_string(),
+            description: "Project files".to_string(),
+            timestamp: 1625247600000,
+            end_time: None,
+            authority: Authority::Admin,
+        };
+        let config = RemoteFileConfig { files, metadata };
+        let serialized = serde_json::to_string(&config).unwrap();
+        insta::assert_snapshot!(serialized);
+    }
+
+    #[test]
+    fn test_deserialize_file_holder() {
+        let json = r#"{"name":"example.txt","content":"SGVsbG8sIHdvcmxkIQ=="}"#;
+        let file_holder: FileHolder = serde_json::from_str(json).unwrap();
+        assert_eq!(file_holder.name, "example.txt");
+        assert_eq!(file_holder.content, b"Hello, world!".to_vec());
+    }
+
+    #[test]
+    fn test_deserialize_file_holder_with_missing_fields() {
+        let json = r#"{"name":"example.txt"}"#;
+        let result: Result<FileHolder, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_file_holder_with_duplicate_fields() {
+        let json = r#"{"name":"example.txt","name":"test.txt","content":"SGVsbG8sIHdvcmxkIQ=="}"#;
+        let result: Result<FileHolder, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+    #[test]
+    fn test_deserialize_unknown_field() {
+        let json = r#"{"name":"example.txt","content":"SGVsbG8sIHdvcmxkIQ==","extra":"data"}"#;
+        let result: Result<FileHolder, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+    #[test]
+    fn test_round_trip_file_holder() {
+        let original = FileHolder {
+            name: "roundtrip.txt".to_string(),
+            content: Vec::from("Round trip test"),
+        };
+        let serialized = serde_json::to_string(&original).unwrap();
+        let deserialized: FileHolder = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(original, deserialized);
     }
 }
