@@ -278,7 +278,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_metadata_local() {
+    async fn test_round_local() {
         let tmpdir = tempfile::tempdir().unwrap();
         let name = tmpdir.path().to_str().unwrap();
 
@@ -290,19 +290,26 @@ mod tests {
             end_time: None,
             authority: Default::default(),
         };
+
+        let file_name = "foo.txt";
+        let content = vec![1, 2, 3];
         let meta = FileHolder {
-            name: "foo.txt".to_string(),
-            content: vec![1, 2, 3],
+            name: file_name.to_string(),
+            content: content.clone(),
         };
         let uid = handler.insert(info, vec![meta]).await.unwrap();
 
-        let result = handler.get_metadata(uid).await;
+        let result = handler.get_metadata(uid.clone()).await;
         let md = result.unwrap();
         assert_eq!(md.title, "title");
         assert_eq!(md.description, "description");
         assert_eq!(md.timestamp, 1);
         assert_eq!(md.end_time, None);
         assert_eq!(md.authority, Authority::default());
+
+        let result = handler.get(uid, file_name).await.unwrap();
+        assert_eq!(result.name, file_name);
+        assert_eq!(result.content, content);
     }
 
     #[tokio::test]
