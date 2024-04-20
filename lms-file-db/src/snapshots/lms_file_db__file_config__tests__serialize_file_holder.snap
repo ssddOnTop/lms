@@ -1,0 +1,5 @@
+---
+source: lms-file-db/src/file_config.rs
+expression: serialized
+---
+{"name":"example.txt","content":"SGVsbG8sIHdvcmxkIQ=="}

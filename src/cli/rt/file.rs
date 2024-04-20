@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use lms_core::FileIO;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -34,6 +34,14 @@ impl FileIO for NativeFileIO {
             .map_err(|_err| anyhow!("Failed to read file: {}", path))?;
         log::info!("File read: {} ... ok", path);
         Ok(content)
+    }
+
+    async fn create_dirs<'a>(&'a self, path: &'a str) -> anyhow::Result<()> {
+        tokio::fs::create_dir_all(path)
+            .await
+            .context(format!("Failed to create directories: {}", path))?;
+        log::info!("Create directories: {} ... ok", path);
+        Ok(())
     }
 }
 

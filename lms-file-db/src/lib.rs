@@ -1,21 +1,5 @@
-use std::sync::Arc;
-
-use crate::{FileIO, HttpIO, Instance};
-
-/// The TargetRuntime struct unifies the available runtime-specific
-/// IO implementations. This is used to reduce piping IO structs all
-/// over the codebase.
-#[derive(Clone)]
-pub struct TargetRuntime {
-    /// HTTP client for making standard HTTP requests.
-    pub http: Arc<dyn HttpIO>,
-    /// Interface for file operations, tailored to the target environment's
-    /// capabilities.
-    pub file: Arc<dyn FileIO>,
-
-    /// Instance gives current time since epoch.
-    pub instance: Arc<dyn Instance>,
-}
+mod file_config;
+mod request_handler;
 
 #[cfg(test)]
 pub mod tests {
@@ -27,9 +11,9 @@ pub mod tests {
     use hyper::body::Bytes;
     use reqwest::Client;
 
-    use crate::http::response::Response;
-    use crate::runtime::TargetRuntime;
-    use crate::{FileIO, HttpIO, Instance};
+    use lms_core::http::response::Response;
+    use lms_core::runtime::TargetRuntime;
+    use lms_core::{FileIO, HttpIO, Instance};
 
     #[derive(Default)]
     struct TestHttp {

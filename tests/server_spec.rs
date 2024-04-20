@@ -1,12 +1,13 @@
 #[cfg(test)]
 pub mod test {
     use std::sync::Arc;
+    use std::time::SystemTime;
 
     use anyhow::{anyhow, Result};
     use hyper::body::Bytes;
     use lms_core::http::response::Response;
     use lms_core::runtime::TargetRuntime;
-    use lms_core::{FileIO, HttpIO};
+    use lms_core::{FileIO, HttpIO, Instance};
     use reqwest::Client;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -69,13 +70,30 @@ pub mod test {
                 .map_err(|e| anyhow!("{}", e))?;
             Ok(String::from_utf8(buffer)?)
         }
-    }
 
+        async fn create_dirs<'a>(&'a self, _path: &'a str) -> Result<()> {
+            Ok(())
+        }
+    }
+    #[derive(Clone)]
+    struct TestInstance {}
+
+    impl Instance for TestInstance {
+        fn now(&self) -> Result<u128> {
+            Ok(SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)?
+                .as_millis())
+        }
+    }
     pub fn init() -> TargetRuntime {
         let http = TestHttp::init();
 
         let file = TestFileIO::init();
-        TargetRuntime { http, file }
+        TargetRuntime {
+            http,
+            file,
+            instance: Arc::new(TestInstance {}),
+        }
     }
 }
 
