@@ -1,8 +1,11 @@
+use crate::config::batch_info::BatchInfo;
+use crate::config::course_info::CourseInfo;
 use crate::config::hash_algo::Algorithm;
 use crate::is_default;
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use totp_rs::{Secret, TOTP};
 
 // TODO: ADD DOCS!!
@@ -12,6 +15,8 @@ use totp_rs::{Secret, TOTP};
 pub struct Config {
     pub server: Server,
     pub auth: AuthInfo,
+    pub courses: BTreeMap<String, CourseInfo>,
+    pub batches: Vec<BatchInfo>,
 }
 
 impl Config {

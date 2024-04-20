@@ -28,6 +28,35 @@
       ],
       "type": "object"
     },
+    "BatchInfo": {
+      "properties": {
+        "courses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "courses",
+        "id"
+      ],
+      "type": "object"
+    },
+    "CourseInfo": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
     "Server": {
       "properties": {
         "host": {
@@ -111,12 +140,26 @@
     "auth": {
       "$ref": "#/definitions/AuthInfo"
     },
+    "batches": {
+      "items": {
+        "$ref": "#/definitions/BatchInfo"
+      },
+      "type": "array"
+    },
+    "courses": {
+      "additionalProperties": {
+        "$ref": "#/definitions/CourseInfo"
+      },
+      "type": "object"
+    },
     "server": {
       "$ref": "#/definitions/Server"
     }
   },
   "required": [
     "auth",
+    "batches",
+    "courses",
     "server"
   ],
   "title": "Config",

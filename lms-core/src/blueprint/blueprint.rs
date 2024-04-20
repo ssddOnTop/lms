@@ -123,5 +123,14 @@ fn validate_config(
             "totp_key is required and must be at least 8 bytes long"
         ));
     }
+    let batches = &config.batches;
+    for batch in batches {
+        for course in batch.courses.iter() {
+            if !config.courses.contains_key(course) {
+                return Err(anyhow::anyhow!("Course {} not found in courses", course));
+            }
+        }
+    }
+
     Ok(())
 }
