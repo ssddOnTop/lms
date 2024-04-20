@@ -89,7 +89,7 @@ impl FileRequestHandler {
         } else {
             let mut pathbuf = std::path::PathBuf::from(&self.db_path);
             pathbuf.push(&uid);
-            pathbuf.push(file_name);
+            pathbuf.push(file_name); // todo
             let path = pathbuf.to_str().context("Unable to generate path")?;
             let content = self.target_runtime.file.read(path).await?;
             Ok(FileHolder {
