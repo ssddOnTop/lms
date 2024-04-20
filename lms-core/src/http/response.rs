@@ -31,9 +31,7 @@ impl Response<Bytes> {
         }
     }
 
-    pub fn to_json<T: de::DeserializeOwned + Clone + std::default::Default>(
-        self,
-    ) -> Result<Response<T>> {
+    pub fn to_json<T: de::DeserializeOwned + Clone + Default>(self) -> Result<Response<T>> {
         let mut resp = Response::default();
         let body = serde_json::from_slice::<T>(&self.body)?;
         resp.body = body;

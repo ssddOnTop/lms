@@ -159,7 +159,6 @@ impl LocalFileConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     fn test_serialize_file_holder() {
