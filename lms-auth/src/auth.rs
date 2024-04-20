@@ -19,7 +19,6 @@ pub struct AuthProvider {
 pub struct AuthRequest {
     pub username: String,
     pub password: String,
-    pub signature: String,
     #[serde(default, skip_serializing_if = "is_default")]
     pub signup_details: Option<SignUpDet>,
 }
@@ -60,11 +59,9 @@ impl AuthRequest {
     pub fn new<T: AsRef<str>>(
         username: T,
         password: T,
-        provider: &AuthProvider,
         sign_up_det: Option<SignUpDet>,
     ) -> Result<Self> {
         let password = hash_256(password);
-        let extra_hash = provider.gen_sig(username.as_ref(), &password)?;
 
         let mut signup_details = None;
 
@@ -76,7 +73,6 @@ impl AuthRequest {
         Ok(Self {
             username: username.as_ref().to_string(),
             password,
-            signature: extra_hash,
             signup_details,
         })
     }
@@ -96,10 +92,6 @@ impl AuthRequest {
         let req =
             serde_json::from_str::<Self>(&req).map_err(|_| anyhow!("Unable to parse request"))?;
         Ok(req)
-    }
-    pub fn verify_sig(&self, auth_provider: &AuthProvider) -> bool {
-        let sig = auth_provider.gen_sig(&self.username, &self.password);
-        sig.map(|v| v.eq(&self.signature)).unwrap_or(false)
     }
 }
 
@@ -134,7 +126,7 @@ impl AuthProvider {
     }
 
     pub async fn authenticate(&self, username: &str, password: &str) -> Result<AuthSucc> {
-        let request = AuthRequest::new(username, password, self, None)?;
+        let request = AuthRequest::new(username, password, None)?;
         let request = request.into_encrypted_request(self)?;
 
         let response = reqwest::Client::new()
@@ -223,7 +215,7 @@ mod tests {
 
         let provider = AuthProvider::init(server_url, totp, aes_key)?;
 
-        let req = AuthRequest::new("user", "pass", &provider, None)?;
+        let req = AuthRequest::new("user", "pass", None)?;
         let req = req.into_encrypted_request(&provider)?;
         let resp_json = json!({
             "success": {
