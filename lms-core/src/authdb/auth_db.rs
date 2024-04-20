@@ -27,9 +27,6 @@ impl AuthDB {
 
         match auth_request {
             Ok(auth_request) => {
-                if !auth_request.verify_sig(auth_provider) {
-                    return auth_err("Signature verification failed");
-                }
                 if auth_request.signup_details.is_some() {
                     self.signup(auth_request).await
                 } else {
@@ -224,12 +221,7 @@ mod tests {
             admin_password: "admin".to_string(),
         };
 
-        let auth_req = AuthRequest::new(
-            "new",
-            "bie",
-            &auth_db.app_context.blueprint.extensions.auth,
-            Some(signup),
-        )?;
+        let auth_req = AuthRequest::new("new", "bie", Some(signup))?;
         let result = auth_db.signup(auth_req).await;
 
         assert!(result.success.is_some());
@@ -241,12 +233,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_fail() -> anyhow::Result<()> {
         let mut auth_db = get_db().await?;
-        let auth_req = AuthRequest::new(
-            "new",
-            "bie",
-            &auth_db.app_context.blueprint.extensions.auth,
-            None,
-        )?;
+        let auth_req = AuthRequest::new("new", "bie", None)?;
 
         let result = auth_db.signup(auth_req).await;
         assert!(result.error.is_some());
@@ -283,12 +270,7 @@ mod tests {
         };
         auth_db.users.insert(newbie);
 
-        let auth_req = AuthRequest::new(
-            "newbie",
-            "newbie",
-            &auth_db.app_context.blueprint.extensions.auth,
-            None,
-        )?;
+        let auth_req = AuthRequest::new("newbie", "newbie", None)?;
         let result = auth_db.login(auth_req).await;
         assert!(result.success.is_some());
         let succ = result.success.unwrap();
@@ -308,12 +290,7 @@ mod tests {
         };
         auth_db.users.insert(newbie);
 
-        let auth_req = AuthRequest::new(
-            "newbie",
-            "newbie",
-            &auth_db.app_context.blueprint.extensions.auth,
-            None,
-        )?;
+        let auth_req = AuthRequest::new("newbie", "newbie", None)?;
 
         let encrypted_req = auth_db
             .app_context
@@ -348,12 +325,7 @@ mod tests {
             admin_password: "admin".to_string(),
         };
 
-        let auth_req = AuthRequest::new(
-            "newbie",
-            "newbie",
-            &auth_db.app_context.blueprint.extensions.auth,
-            Some(signup),
-        )?;
+        let auth_req = AuthRequest::new("newbie", "newbie", Some(signup))?;
 
         let encrypted_req = auth_db
             .app_context

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::config::config_module::ConfigModule;
 use crate::config::Config;
 use crate::runtime::TargetRuntime;

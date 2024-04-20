@@ -156,7 +156,6 @@ mod server_spec {
         let auth_req = AuthRequest::new(
             "new",
             "notNewbie",
-            auth,
             Some(SignUpDet {
                 name: "newbie".to_string(),
                 authority: 2,
@@ -168,7 +167,6 @@ mod server_spec {
         let auth_req_invalid_authority = AuthRequest::new(
             "new",
             "notNewbie",
-            auth,
             Some(SignUpDet {
                 name: "newbie".to_string(),
                 authority: 3,
@@ -177,9 +175,9 @@ mod server_spec {
             }),
         )?;
 
-        let auth_req_invalid_pass = AuthRequest::new("new", "notNewbieIncorrectPass", auth, None)?;
+        let auth_req_invalid_pass = AuthRequest::new("new", "notNewbieIncorrectPass", None)?;
 
-        let auth_req_no_such_user = AuthRequest::new("noSuchUser", "notNewbie", auth, None)?;
+        let auth_req_no_such_user = AuthRequest::new("noSuchUser", "notNewbie", None)?;
 
         test_req(
             vec![
