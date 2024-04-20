@@ -14,7 +14,7 @@
   },
   "batches": [
     {
-      "courses": ["course1", "course2"],
+      "courses": ["course1"],
       "id": "batch1"
     }
   ],
