@@ -1,18 +1,18 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+#![allow(unused)]
+
 use anyhow::Result;
-use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use serde::ser::SerializeStruct;
+use base64::Engine;
 use lms_core::authdb::auth_actors::Authority;
 use lms_core::is_default;
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Clone)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct FileHolder {
     pub name: String,
     pub content: Vec<u8>,
 }
-
-
 
 pub struct InsertionInfo {
     pub title: String,
@@ -23,7 +23,10 @@ pub struct InsertionInfo {
 }
 
 impl Serialize for FileHolder {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> where S: Serializer {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         let mut state = serializer.serialize_struct("FileHolder", 2)?;
         state.serialize_field("name", &self.name)?;
         let b64 = BASE64_STANDARD.encode(&self.content);
@@ -41,7 +44,10 @@ impl<'de> serde::de::Visitor<'de> for FileHolderVisitor {
         formatter.write_str("struct FileHolder")
     }
 
-    fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error> where A: serde::de::MapAccess<'de> {
+    fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
         let mut name = None;
         let mut content = None;
         while let Some(key) = map.next_key()? {
@@ -57,7 +63,11 @@ impl<'de> serde::de::Visitor<'de> for FileHolderVisitor {
                         return Err(serde::de::Error::duplicate_field("content"));
                     }
                     let b64: String = map.next_value()?;
-                    content = Some(BASE64_STANDARD.decode(b64.as_bytes()).map_err(serde::de::Error::custom)?);
+                    content = Some(
+                        BASE64_STANDARD
+                            .decode(b64.as_bytes())
+                            .map_err(serde::de::Error::custom)?,
+                    );
                 }
                 _ => {
                     return Err(serde::de::Error::unknown_field(key, &["name", "content"]));
@@ -71,12 +81,15 @@ impl<'de> serde::de::Visitor<'de> for FileHolderVisitor {
 }
 
 impl<'de> Deserialize<'de> for FileHolder {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error> where D: Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         deserializer.deserialize_struct("FileHolder", &["name", "content"], FileHolderVisitor)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct RemoteFileConfig {
     #[serde(default, skip_serializing_if = "is_default")]
     pub files: Vec<FileHolder>, // file names and content
@@ -90,7 +103,7 @@ pub struct LocalFileConfig {
     pub metadata: Metadata,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Metadata {
     pub title: String,
     pub description: String,
@@ -122,8 +135,7 @@ impl RemoteFileConfig {
 }
 
 impl LocalFileConfig {
-
-    pub fn combine_info(insertion_info: InsertionInfo, files: &Vec<FileHolder>) -> Self {
+    pub fn combine_info(insertion_info: InsertionInfo, files: &[FileHolder]) -> Self {
         Self {
             files: files.iter().map(|file| file.name.clone()).collect(),
             metadata: Metadata {

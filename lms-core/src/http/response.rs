@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use bytes::Bytes;
 use derive_setters::Setters;
 use http_body_util::Full;
-use std::str::FromStr;
 use serde::de;
+use std::str::FromStr;
 
 #[derive(Clone, Debug, Default, Setters)]
 pub struct Response<Body: Default + Clone> {
@@ -31,7 +31,9 @@ impl Response<Bytes> {
         }
     }
 
-    pub fn to_json<T: de::DeserializeOwned>(self) -> Result<Response<T>> {
+    pub fn to_json<T: de::DeserializeOwned + Clone + std::default::Default>(
+        self,
+    ) -> Result<Response<T>> {
         let mut resp = Response::default();
         let body = serde_json::from_slice::<T>(&self.body)?;
         resp.body = body;

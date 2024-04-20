@@ -19,7 +19,6 @@ pub struct TargetRuntime {
 
 #[cfg(test)]
 pub mod tests {
-    use std::path::Path;
     use std::sync::Arc;
     use std::time::SystemTime;
 
@@ -83,7 +82,7 @@ pub mod tests {
             Ok(String::from_utf8(buffer)?)
         }
 
-        async fn create_dirs<'a, T: AsRef<Path>>(&'a self, path: &'a T) -> Result<()> {
+        async fn create_dirs<'a>(&'a self, _path: &'a str) -> Result<()> {
             Ok(())
         }
     }

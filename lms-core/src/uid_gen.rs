@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_uid_generator() {
-        let mut uid_gen = UidGenerator::new();
+        let uid_gen = UidGenerator::new();
         let now = 1632499259;
         let uid = uid_gen.generate(now);
         assert_eq!(uid.len(), 20);
@@ -93,7 +93,7 @@ mod tests {
         let now = 1632499259;
         let mut uids = HashSet::new();
         for _ in 0..1000 {
-            let mut uid_gen = UidGenerator::new();
+            let uid_gen = UidGenerator::new();
             let uid = uid_gen.generate(now);
             uids.insert(uid);
         }
@@ -102,10 +102,10 @@ mod tests {
 
     #[test]
     fn test_uid_increment() {
-        let mut uid_gen = UidGenerator::new();
+        let uid_gen = UidGenerator::new();
         let now = 1632499259;
         let uid1 = uid_gen.generate(now);
-        let mut uid_gen = UidGenerator::new();
+        let uid_gen = UidGenerator::new();
         let uid2 = uid_gen.generate(now);
         assert_ne!(uid1, uid2);
     }

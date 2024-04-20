@@ -1,13 +1,17 @@
-use std::path::PathBuf;
+#![allow(unused)]
+
 use anyhow::{anyhow, Context};
 use serde_json::json;
+use std::path::PathBuf;
 
 use lms_core::runtime::TargetRuntime;
 use lms_core::uid_gen::UidGenerator;
 
-use crate::file_config::{FileHolder, InsertionInfo, LocalFileConfig, RemoteFileConfig};
+use crate::file_config::{FileHolder, InsertionInfo, LocalFileConfig, Metadata, RemoteFileConfig};
 
 const MAX_FILE_SIZE: usize = 1024 * 1024 * 10; // 10MB
+
+// TODO: Add some encryption
 
 pub struct FileRequestHandler {
     target_runtime: TargetRuntime,
@@ -24,15 +28,31 @@ impl FileRequestHandler {
         }
     }
 
-    pub async fn insert(&self, insertion_info: InsertionInfo, files: Vec<FileHolder>) -> anyhow::Result<String> {
+    pub async fn insert(
+        &self,
+        insertion_info: InsertionInfo,
+        files: Vec<FileHolder>,
+    ) -> anyhow::Result<String> {
         validate_files(&files)?;
         let uid_generator = UidGenerator::default();
-        let uid = uid_generator.generate(self.target_runtime.instance.now().map_err(|_| anyhow!("Unable to generate UID"))?);
+        let uid = uid_generator.generate(
+            self.target_runtime
+                .instance
+                .now()
+                .map_err(|_| anyhow!("Unable to generate UID"))?,
+        );
         if self.is_url {
             let mut url = url::Url::parse(&self.db_path)?;
             url.set_path(&uid);
             let mut req = reqwest::Request::new(reqwest::Method::POST, url.clone());
-            let file_config = serde_json::to_string(&RemoteFileConfig::combine_info(insertion_info, files)).map_err(|e| anyhow!("Unable to generate body for further request with err: {}",e))?;
+            let file_config =
+                serde_json::to_string(&RemoteFileConfig::combine_info(insertion_info, files))
+                    .map_err(|e| {
+                        anyhow!(
+                            "Unable to generate body for further request with err: {}",
+                            e
+                        )
+                    })?;
             *req.body_mut() = Some(reqwest::Body::from(file_config));
 
             let response = self
@@ -49,18 +69,58 @@ impl FileRequestHandler {
             let mut pathbuf = std::path::PathBuf::from(&self.db_path);
             pathbuf.push(&uid);
             let path = pathbuf.to_str().context("Unable to generate path")?;
-            self.target_runtime.file.create_dirs(path).await.map_err(|e| anyhow!("Unable to create dir for uid: {} with err: {}", uid, e))?;
+            self.target_runtime
+                .file
+                .create_dirs(path)
+                .await
+                .map_err(|e| anyhow!("Unable to create dir for uid: {} with err: {}", uid, e))?;
 
             let local_config = LocalFileConfig::combine_info(insertion_info, &files);
             for file in files {
-                let path = PathBuf::from(path).join(&file.name).to_str().context("Unable to generate path1")?;
-                self.target_runtime.file.write(path, file.content.as_ref()).await?;
+                let path = PathBuf::from(path).join(&file.name);
+                let path = path.to_str().context("Unable to generate path1")?;
+
+                self.target_runtime
+                    .file
+                    .write(path, file.content.as_ref())
+                    .await?;
             }
             let local_config = serde_json::to_string(&local_config)?;
-            let path = PathBuf::from(path).join("config.json").to_str().context("Unable to generate path2")?;
-            self.target_runtime.file.write(path, local_config.as_bytes()).await?;
+            let path = PathBuf::from(path).join("config.json");
+            let path = path.to_str().context("Unable to generate path2")?;
+
+            self.target_runtime
+                .file
+                .write(path, local_config.as_bytes())
+                .await?;
         }
         Ok(uid)
+    }
+
+    pub async fn get_metadata(&self, uid: String) -> anyhow::Result<Metadata> {
+        if self.is_url {
+            let mut url = url::Url::parse(&self.db_path)?;
+            url.set_path(&uid);
+            let req = reqwest::Request::new(reqwest::Method::GET, url);
+            let response = self.target_runtime.http.execute(req).await.map_err(|e| {
+                anyhow!("Failed to get metadata from remote server with err: {}", e)
+            })?;
+
+            if !response.status.is_success() {
+                return Err(anyhow::anyhow!("Failed to get metadata from remote server"));
+            }
+
+            let body = response.to_json::<RemoteFileConfig>()?.body.metadata;
+            Ok(body)
+        } else {
+            let mut pathbuf = std::path::PathBuf::from(&self.db_path);
+            pathbuf.push(&uid);
+            let path = pathbuf.join("config.json");
+            let path = path.to_str().context("Unable to generate path")?;
+            let content = self.target_runtime.file.read(path).await?;
+            let config: LocalFileConfig = serde_json::from_str(&content)?;
+            Ok(config.metadata)
+        }
     }
 
     pub async fn get(&self, uid: String, file_name: &str) -> anyhow::Result<FileHolder> {
@@ -71,7 +131,8 @@ impl FileRequestHandler {
             *req.body_mut() = Some(reqwest::Body::from(
                 json!({
                     "file_name": file_name,
-                }).to_string()
+                })
+                .to_string(),
             ));
             let response = self
                 .target_runtime
@@ -89,7 +150,7 @@ impl FileRequestHandler {
         } else {
             let mut pathbuf = std::path::PathBuf::from(&self.db_path);
             pathbuf.push(&uid);
-            pathbuf.push(file_name); // todo
+            pathbuf.push(file_name);
             let path = pathbuf.to_str().context("Unable to generate path")?;
             let content = self.target_runtime.file.read(path).await?;
             Ok(FileHolder {
@@ -98,7 +159,6 @@ impl FileRequestHandler {
             })
         }
     }
-
 }
 
 fn validate_files(files: &Vec<FileHolder>) -> anyhow::Result<()> {
