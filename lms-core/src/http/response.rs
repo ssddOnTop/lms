@@ -64,3 +64,61 @@ impl Response<Bytes> {
         Ok(builder.body(Full::new(self.body))?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http_body_util::BodyExt;
+    use reqwest::StatusCode;
+
+    #[tokio::test]
+    async fn test_response_empty() {
+        let response: Response<Bytes> = Response::empty();
+        assert_eq!(response.status, StatusCode::OK);
+        assert!(response.headers.is_empty());
+        assert!(response.body.is_empty());
+    }
+    #[tokio::test]
+    async fn test_to_json() {
+        let response = Response {
+            status: StatusCode::OK,
+            headers: reqwest::header::HeaderMap::new(),
+            body: Bytes::from(r#"{"name":"test"}"#),
+        };
+        let json_response: Result<Response<serde_json::Value>> = response.to_json();
+        assert!(json_response.is_ok());
+        assert_eq!(json_response.unwrap().body["name"], "test");
+    }
+
+    #[tokio::test]
+    async fn test_to_resp_string() {
+        let response = Response {
+            status: StatusCode::OK,
+            headers: reqwest::header::HeaderMap::new(),
+            body: Bytes::from("hello world"),
+        };
+        let string_response: Result<Response<String>> = response.to_resp_string();
+        assert!(string_response.is_ok());
+        assert_eq!(string_response.unwrap().body, "hello world");
+    }
+    #[tokio::test]
+    async fn test_into_hyper() -> Result<()> {
+        let response = Response {
+            status: StatusCode::OK,
+            headers: reqwest::header::HeaderMap::new(),
+            body: Bytes::from("data"),
+        };
+        let hyper_response: Result<hyper::Response<Full<Bytes>>> = response.into_hyper();
+        assert!(hyper_response.is_ok());
+        let bytes = hyper_response
+            .unwrap()
+            .into_body()
+            .frame()
+            .await
+            .context("unable to extract frame")??
+            .into_data()
+            .map_err(|e| anyhow::anyhow!("{:?}", e))?;
+        assert_eq!(bytes, &Bytes::from("data"));
+        Ok(())
+    }
+}
