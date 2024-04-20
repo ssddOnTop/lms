@@ -39,11 +39,12 @@ async fn handle_post(
     auth_db: Arc<RwLock<AuthDB>>,
 ) -> Result<Response<Full<Bytes>>> {
     let path = req.uri().path();
+    let body = into_bytes(req).await?;
     match path {
         "/auth" => auth_db
             .write()
             .await
-            .handle_request(into_bytes(req).await?)
+            .handle_request(body)
             .await
             .into_hyper_response(),
         &_ => not_found(),

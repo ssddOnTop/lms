@@ -1472,6 +1472,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "lms-actions-db"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.0",
+ "bytes",
+ "http-body-util",
+ "hyper 1.3.1",
+ "lms-auth",
+ "lms-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "lms-auth"
 version = "0.1.0"
 dependencies = [
