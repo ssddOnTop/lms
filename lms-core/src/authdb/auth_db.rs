@@ -59,6 +59,7 @@ impl AuthDB {
                             name: signup_details.name.clone(),
                             password: req.password,
                             authority,
+                            batch: signup_details.batch,
                         };
 
                         self.users.insert(user);
@@ -212,6 +213,7 @@ mod tests {
             name: "admin".to_string(),
             password: hash_256("admin"),
             authority: Authority::Admin,
+            batch: None,
         };
         auth_db.users.insert(admin);
         let signup = SignUpDet {
@@ -219,6 +221,7 @@ mod tests {
             authority: 2,                        // is student
             admin_username: "admin".to_string(), // siged by: admin
             admin_password: "admin".to_string(),
+            batch: Some("22BCS".to_string()),
         };
 
         let auth_req = AuthRequest::new("new", "bie", Some(signup))?;
@@ -267,6 +270,7 @@ mod tests {
             name: "newbie".to_string(),
             password: hash_256("newbie"),
             authority: Authority::Student,
+            batch: Some("22BCS".to_string()),
         };
         auth_db.users.insert(newbie);
 
@@ -287,6 +291,7 @@ mod tests {
             name: "newbie".to_string(),
             password: hash_256("newbie"),
             authority: Authority::Student,
+            batch: Some("22BCS".to_string()),
         };
         auth_db.users.insert(newbie);
 
@@ -316,6 +321,7 @@ mod tests {
             name: "admin".to_string(),
             password: hash_256("admin"),
             authority: Authority::Admin,
+            batch: None,
         };
         auth_db.users.insert(admin);
         let signup = SignUpDet {
@@ -323,6 +329,7 @@ mod tests {
             authority: 2,                        // is student
             admin_username: "admin".to_string(), // siged by: admin
             admin_password: "admin".to_string(),
+            batch: Some("22BCS".to_string()),
         };
 
         let auth_req = AuthRequest::new("newbie", "newbie", Some(signup))?;

@@ -9,5 +9,16 @@
     },
     "aes_key": "1234567",
     "auth_db_path": "auth.db"
+  },
+  "batches": [
+    {
+      "courses": ["course1"],
+      "id": "batch1"
+    }
+  ],
+  "courses": {
+    "course1": {
+      "name": "Course 1"
+    }
   }
 }

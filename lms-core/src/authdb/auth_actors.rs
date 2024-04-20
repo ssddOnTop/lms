@@ -42,6 +42,7 @@ pub struct User {
     pub name: String,
     pub password: String,
     pub authority: Authority,
+    pub batch: Option<String>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
@@ -50,6 +51,9 @@ pub struct Users {
 }
 
 impl Users {
+    pub fn get_all(&self) -> &HashMap<String, User> {
+        &self.users
+    }
     pub fn get(&self, username: &str) -> Option<User> {
         self.users.get(username).cloned()
     }
@@ -73,6 +77,7 @@ mod tests {
                 name: "Foo".to_string(),
                 password: "foopassword".to_string(),
                 authority: Authority::Admin,
+                batch: Some("22BCS".to_string()),
             },
         );
         let users = Users { users };
@@ -80,13 +85,13 @@ mod tests {
         let ser = serde_json::to_string(&users)?;
         assert_eq!(
             ser,
-            r#"{"users":{"foo":{"username":"foo","name":"Foo","password":"foopassword","authority":"Admin"}}}"#
+            "{\"users\":{\"foo\":{\"username\":\"foo\",\"name\":\"Foo\",\"password\":\"foopassword\",\"authority\":\"Admin\",\"batch\":\"22BCS\"}}}"
         );
         Ok(())
     }
     #[test]
     fn test_deser() -> anyhow::Result<()> {
-        let ser = r#"{"users":{"foo":{"username":"foo","name":"Foo","password":"foopassword","authority":"Admin"}}}"#;
+        let ser = r#"{"users":{"foo":{"username":"foo","name":"Foo","password":"foopassword","authority":"Admin","batch": "22BCS"}}}"#;
         let mut users = HashMap::new();
         users.insert(
             "foo".to_string(),
@@ -95,6 +100,7 @@ mod tests {
                 name: "Foo".to_string(),
                 password: "foopassword".to_string(),
                 authority: Authority::Admin,
+                batch: Some("22BCS".to_string()),
             },
         );
         let users = Users { users };

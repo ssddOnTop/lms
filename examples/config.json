@@ -11,5 +11,16 @@
       "totpSecret": "base32encodedkey"
     },
     "aesKey": "32bytebase64encodedkey"
+  },
+  "batches": [
+    {
+      "courses": ["course1"],
+      "id": "batch1"
+    }
+  ],
+  "courses": {
+    "course1": {
+      "name": "Course 1"
+    }
   }
 }

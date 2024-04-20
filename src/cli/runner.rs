@@ -44,6 +44,7 @@ async fn run(cli: Cli, runtime: TargetRuntime) -> anyhow::Result<()> {
             password,
             authority,
             print,
+            batch,
         } => {
             let config_module = config_reader.read(config_path).await?;
             let blueprint = Blueprint::try_from(config_module)?;
@@ -55,6 +56,7 @@ async fn run(cli: Cli, runtime: TargetRuntime) -> anyhow::Result<()> {
                 name,
                 password: hash_256(password),
                 authority,
+                batch,
             });
 
             if print.unwrap_or_default() {

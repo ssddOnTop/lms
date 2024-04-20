@@ -1,8 +1,12 @@
+use crate::config::batch_info::BatchInfo;
+use crate::config::course_info::CourseInfo;
 use crate::config::hash_algo::Algorithm;
 use crate::is_default;
 use anyhow::Result;
+use lms_auth::local_crypto::hash_128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use totp_rs::{Secret, TOTP};
 
 // TODO: ADD DOCS!!
@@ -12,6 +16,8 @@ use totp_rs::{Secret, TOTP};
 pub struct Config {
     pub server: Server,
     pub auth: AuthInfo,
+    pub courses: BTreeMap<String, CourseInfo>,
+    pub batches: Vec<BatchInfo>,
 }
 
 impl Config {
@@ -74,7 +80,7 @@ impl TotpSettings {
             self.digits.unwrap_or(6),
             1,
             self.period.unwrap_or(30),
-            Secret::Raw(self.totp_secret.as_bytes().to_vec()).to_bytes()?,
+            Secret::Raw(hash_128(self.totp_secret).as_bytes().to_vec()).to_bytes()?,
         )?)
     }
 }
