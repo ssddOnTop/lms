@@ -4,7 +4,7 @@ use rand::Rng;
 
 lazy_static! {
     static ref PUSH_CHARS: Vec<char> =
-        "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
+        "0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
             .chars()
             .collect();
 }

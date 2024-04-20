@@ -103,7 +103,7 @@ pub struct LocalFileConfig {
     pub metadata: Metadata,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Metadata {
     pub title: String,
     pub description: String,
