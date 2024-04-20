@@ -3,6 +3,7 @@ use bytes::Bytes;
 use derive_setters::Setters;
 use http_body_util::Full;
 use std::str::FromStr;
+use serde::de;
 
 #[derive(Clone, Debug, Default, Setters)]
 pub struct Response<Body: Default + Clone> {
@@ -30,9 +31,9 @@ impl Response<Bytes> {
         }
     }
 
-    pub fn to_json(self) -> Result<Response<serde_json::Value>> {
+    pub fn to_json<T: de::DeserializeOwned>(self) -> Result<Response<T>> {
         let mut resp = Response::default();
-        let body = serde_json::from_slice::<serde_json::Value>(&self.body)?;
+        let body = serde_json::from_slice::<T>(&self.body)?;
         resp.body = body;
         resp.status = self.status;
         resp.headers = self.headers;

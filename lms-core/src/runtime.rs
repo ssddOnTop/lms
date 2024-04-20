@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{FileIO, HttpIO};
+use crate::{FileIO, HttpIO, Instance};
 
 /// The TargetRuntime struct unifies the available runtime-specific
 /// IO implementations. This is used to reduce piping IO structs all
@@ -12,12 +12,16 @@ pub struct TargetRuntime {
     /// Interface for file operations, tailored to the target environment's
     /// capabilities.
     pub file: Arc<dyn FileIO>,
+
+    /// Instance gives current time since epoch.
+    pub instance: Arc<dyn Instance>,
 }
 
 #[cfg(test)]
 pub mod tests {
-
+    use std::path::Path;
     use std::sync::Arc;
+    use std::time::SystemTime;
 
     use anyhow::{Context, Result};
     use dashmap::DashMap;
@@ -26,7 +30,7 @@ pub mod tests {
 
     use crate::http::response::Response;
     use crate::runtime::TargetRuntime;
-    use crate::{FileIO, HttpIO};
+    use crate::{FileIO, HttpIO, Instance};
 
     #[derive(Default)]
     struct TestHttp {
@@ -78,6 +82,21 @@ pub mod tests {
                 .clone();
             Ok(String::from_utf8(buffer)?)
         }
+
+        async fn create_dirs<'a, T: AsRef<Path>>(&'a self, path: &'a T) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[derive(Clone)]
+    struct TestInstance {}
+
+    impl Instance for TestInstance {
+        fn now(&self) -> Result<u128> {
+            Ok(SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)?
+                .as_millis())
+        }
     }
 
     pub fn init() -> TargetRuntime {
@@ -87,6 +106,7 @@ pub mod tests {
         TargetRuntime {
             http,
             file: Arc::new(file),
+            instance: Arc::new(TestInstance {}),
         }
     }
 }
