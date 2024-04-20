@@ -167,6 +167,7 @@ mod server_spec {
                 name: "admin".to_string(),
                 password: hash_256("admin"),
                 authority: Authority::Admin,
+                batch: None,
             });
         }
         let auth = config_module.extensions.auth.as_ref().unwrap();
@@ -179,6 +180,7 @@ mod server_spec {
                 authority: 2,
                 admin_username: "admin".to_string(),
                 admin_password: "admin".to_string(),
+                batch: Some("22BCS".to_string()),
             }),
         )?;
 
@@ -190,6 +192,7 @@ mod server_spec {
                 authority: 3,
                 admin_username: "admin".to_string(),
                 admin_password: "admin".to_string(),
+                batch: Some("22BCS".to_string()),
             }),
         )?;
 

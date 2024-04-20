@@ -29,6 +29,7 @@ pub struct SignUpDet {
     pub authority: u8,
     pub admin_username: String,
     pub admin_password: String,
+    pub batch: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]

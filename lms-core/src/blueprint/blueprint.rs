@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use anyhow::anyhow;
 use totp_rs::{Algorithm, Secret, TOTP};
 
-use crate::authdb::auth_actors::Users;
+use crate::authdb::auth_actors::{Authority, Users};
 use crate::config;
 use lms_auth::auth::AuthProvider;
 
@@ -128,6 +128,23 @@ fn validate_config(
         for course in batch.courses.iter() {
             if !config.courses.contains_key(course) {
                 return Err(anyhow::anyhow!("Course {} not found in courses", course));
+            }
+        }
+    }
+
+    if let Some(users) = config.extensions.users.as_ref() {
+        for user in users.get_all().values() {
+            if let Some(batch) = user.batch.as_ref() {
+                if !config.batches.iter().any(|b| b.id == *batch) {
+                    return Err(anyhow::anyhow!(
+                        "Invalid natch {} for user: {}",
+                        batch,
+                        user.name
+                    ));
+                }
+            }
+            if user.authority.eq(&Authority::Student) && user.batch.is_none() {
+                return Err(anyhow::anyhow!("Batch not found for student: {:?}", user));
             }
         }
     }

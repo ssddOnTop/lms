@@ -40,6 +40,8 @@ pub enum Command {
         password: String,
         #[arg(short, long)]
         authority: Authority,
+        #[arg(short, long)]
+        batch: Option<String>,
 
         #[arg(long)]
         print: Option<bool>,
