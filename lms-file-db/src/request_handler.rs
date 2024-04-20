@@ -113,7 +113,7 @@ impl FileRequestHandler {
                 return Err(anyhow::anyhow!("Failed to get metadata from remote server"));
             }
 
-            let body = response.to_json::<RemoteFileConfig>()?.body.metadata;
+            let body = response.to_json::<Metadata>()?.body;
             Ok(body)
         } else {
             let mut pathbuf = std::path::PathBuf::from(&self.db_path);
@@ -303,5 +303,43 @@ mod tests {
         assert_eq!(md.timestamp, 1);
         assert_eq!(md.end_time, None);
         assert_eq!(md.authority, Authority::default());
+    }
+
+    #[tokio::test]
+    async fn test_get_metadata_remote() {
+        let server = start_mock_server();
+
+        let handler = FileRequestHandler::new(crate::tests::init(), server.base_url());
+
+        let info = InsertionInfo {
+            title: "title".to_string(),
+            description: "description".to_string(),
+            timestamp: 1,
+            end_time: None,
+            authority: Default::default(),
+        };
+        let meta = FileHolder {
+            name: "foo.txt".to_string(),
+            content: vec![1, 2, 3],
+        };
+
+        let sample_metadata = Metadata {
+            title: "title".to_string(),
+            description: "description".to_string(),
+            timestamp: 1,
+            end_time: Some(2),
+            authority: Authority::Admin,
+        };
+        let uid = "sample".to_string();
+
+        server.mock(|w, t| {
+            w.method(httpmock::Method::GET).path(format!("/{}", uid));
+            t.status(200)
+                .body(serde_json::to_string(&sample_metadata).unwrap());
+        });
+
+        let result = handler.get_metadata(uid).await;
+        let md = result.unwrap();
+        assert_eq!(sample_metadata, md);
     }
 }
