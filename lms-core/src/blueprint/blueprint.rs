@@ -82,7 +82,7 @@ impl TryFrom<ConfigModule> for Blueprint {
                 config_module.config.auth.totp.totp_secret, config_module.config.auth.aes_key
             )));
 
-        validate_config(cfg, &config_module.extensions.auth)?;
+        validate_config(cfg, config_module.extensions.auth.as_ref())?;
 
         let server = Server::try_from(config_module.config.server)?;
 
@@ -95,16 +95,17 @@ impl TryFrom<ConfigModule> for Blueprint {
 
 fn validate_config(
     config: ConfigModule,
-    _auth_provider: &Option<AuthProvider>,
+    auth_provider: Option<&AuthProvider>,
 ) -> anyhow::Result<()> {
-    if _auth_provider.is_none() {
-        return Err(anyhow!(
-            "Auth Provider not found in config, Initiate the server with `Init` Command"
-        ));
-    }
     if config.extensions.users.is_none() {
         return Err(anyhow!(
             "Users not found in config, Initiate the server with `Init` Command"
+        ));
+    }
+
+    if auth_provider.is_none() {
+        return Err(anyhow!(
+            "Auth Provider not found in config, Initiate the server with `Init` Command"
         ));
     }
 
@@ -150,4 +151,74 @@ fn validate_config(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::authdb::auth_actors::Users;
+    use crate::config::config_module::{ConfigModule, Extensions};
+    use lms_auth::auth::AuthProvider;
+
+    #[test]
+    fn test_validate_config_fail() {
+        let config_module = ConfigModule::default();
+
+        let result = validate_config(config_module, None);
+        assert!(
+            result.is_err(),
+            "Users not found in config, Initiate the server with `Init` Command"
+        );
+
+        let mut config_module = ConfigModule {
+            extensions: Extensions {
+                users: Some(Users::default()),
+                auth: None,
+            },
+            ..Default::default()
+        };
+        config_module.extensions = Extensions {
+            users: Some(Users::default()),
+            auth: None,
+        };
+
+        let result = validate_config(config_module, None);
+        assert!(
+            result.is_err(),
+            "Auth Provider not found in config, Initiate the server with `Init` Command"
+        );
+
+        let mut config_module = ConfigModule::default();
+        let secret = Secret::Raw("HelloIamUnderWater".as_bytes().to_vec())
+            .to_bytes()
+            .unwrap();
+        let totp = TOTP::new(Algorithm::SHA1, 8, 1, 86400, secret).unwrap();
+
+        let auth_provider =
+            AuthProvider::init("http://localhost/auth".to_string(), totp, "alo".to_string())
+                .unwrap();
+
+        config_module.extensions.auth = Some(auth_provider.clone());
+        config_module.auth.aes_key = "short".to_string();
+
+        let result = validate_config(config_module.clone(), Some(&auth_provider));
+        assert!(
+            result.is_err(),
+            "aes_key is required and must be 8 characters long"
+        );
+        config_module.auth.aes_key = "shortshortshortshortshort".to_string();
+
+        let result = validate_config(config_module.clone(), Some(&auth_provider));
+        assert!(
+            result.is_err(),
+            "Expected error when aes_key is less than 8 characters"
+        );
+
+        config_module.auth.totp.totp_secret = "short".to_string();
+        let result = validate_config(config_module, Some(&auth_provider));
+        assert!(
+            result.is_err(),
+            "totp_key is required and must be at least 8 bytes long"
+        );
+    }
 }
