@@ -11,7 +11,6 @@ lazy_static! {
 
 pub struct UidGenerator {
     last_rand_chars: [usize; 12],
-    last_push_time: u128,
     rand_gen: ThreadRng,
 }
 
@@ -26,15 +25,11 @@ impl UidGenerator {
         let rand_gen = rand::thread_rng();
         UidGenerator {
             last_rand_chars: [0; 12],
-            last_push_time: 0,
             rand_gen,
         }
     }
 
     pub fn generate(mut self, now: u128) -> String {
-        let duplicate_time = now == self.last_push_time;
-        self.last_push_time = now;
-
         let mut time_stamp_chars: [char; 8] = ['0'; 8];
         let mut temp_now = now;
         for i in (0..8).rev() {
@@ -45,12 +40,8 @@ impl UidGenerator {
 
         let mut result = time_stamp_chars.iter().collect::<String>();
 
-        if !duplicate_time {
-            for i in 0..12 {
-                self.last_rand_chars[i] = self.rand_gen.gen_range(0..64);
-            }
-        } else {
-            self = self.increment_array();
+        for i in 0..12 {
+            self.last_rand_chars[i] = self.rand_gen.gen_range(0..64);
         }
 
         for &rand_char_idx in self.last_rand_chars.iter() {
@@ -59,17 +50,6 @@ impl UidGenerator {
         debug_assert_eq!(result.len(), 20);
 
         result
-    }
-
-    fn increment_array(mut self) -> Self {
-        for i in (0..12).rev() {
-            if self.last_rand_chars[i] != 63 {
-                self.last_rand_chars[i] += 1;
-                return self;
-            }
-            self.last_rand_chars[i] = 0;
-        }
-        self
     }
 }
 
