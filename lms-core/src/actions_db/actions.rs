@@ -53,7 +53,7 @@ pub struct ActionsActivity {
     pub actions: DashMap<String, Vec<ActionsContent>>,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ActionsContent {
     pub is_notif: bool,
     pub content_id: String,

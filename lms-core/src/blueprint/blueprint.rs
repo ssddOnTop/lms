@@ -126,6 +126,12 @@ fn validate_config(
         return Err(anyhow!("ActionsDB path is required"));
     }
 
+    if config.server.file_db.starts_with("http") {
+        url::Url::parse(&config.server.file_db).map_err(|_| anyhow!("Invalid URL for FileDB"))?;
+    } else if config.server.file_db.is_empty() {
+        return Err(anyhow!("FileDB dir is required"));
+    }
+
     if config.auth.aes_key.is_empty() || config.auth.aes_key.len() < 8 {
         return Err(anyhow::anyhow!(
             "aes_key is required and must be 8 characters long"

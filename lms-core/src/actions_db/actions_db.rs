@@ -214,7 +214,7 @@ fn actions_success<T: AsRef<[u8]>>(message: T) -> ActionsResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::actions_db::actions::{ActionsContent, ActionsRead};
+    use crate::actions_db::actions::{ActionsContent, ActionsRead, FileWrite};
     use crate::authdb::auth_actors::Users;
     use crate::blueprint::Blueprint;
     use crate::config::batch_info::BatchInfo;
@@ -223,8 +223,9 @@ mod tests {
     use crate::file_db::file_config::Metadata;
     use lms_auth::auth::AuthProvider;
     use lms_auth::local_crypto::hash_256;
+    use std::path::PathBuf;
 
-    fn app_ctx<T: AsRef<str>>(db: T) -> Result<AppContext> {
+    fn app_ctx<T: AsRef<str>>(file_db: T, actions_db: T) -> Result<AppContext> {
         let mut module = ConfigModule::default();
         module.auth.aes_key = "32bytebase64encodedkey".to_string();
         module.auth.totp.totp_secret = "base32encodedkey".to_string();
@@ -250,7 +251,8 @@ mod tests {
             courses: vec!["course1".to_string(), "course2".to_string()],
         }];
 
-        module.server.actions_db = db.as_ref().to_string();
+        module.server.actions_db = actions_db.as_ref().to_string();
+        module.server.file_db = file_db.as_ref().to_string();
 
         module.extensions.users = Some(Users::default());
 
@@ -273,7 +275,10 @@ mod tests {
         let tmp_file = tempfile::NamedTempFile::new()?;
         let tmp_file_path = tmp_file.path().to_str().unwrap();
 
-        let app_context = app_ctx(tmp_file_path)?;
+        let tmp_dir = tempfile::tempdir()?;
+        let tmp_dir_path = tmp_dir.path().to_str().unwrap();
+
+        let app_context = app_ctx(tmp_dir_path, tmp_file_path)?;
         let totp = &app_context.blueprint.server.totp;
         let token = format!("{}_{}", "username", totp.generate_current()?);
         let token = app_context.blueprint.extensions.auth.encrypt_aes(token)?;
@@ -407,10 +412,112 @@ mod tests {
                 .await?,
         )?;
 
-        assert_eq!(
-            serde_json::to_string(&expected)?,
-            serde_json::to_string(&actual)?
+        let map1 = expected
+            .actions
+            .into_iter()
+            .collect::<std::collections::HashMap<_, _>>();
+        let map2 = actual
+            .actions
+            .into_iter()
+            .collect::<std::collections::HashMap<_, _>>();
+        assert_eq!(map1, map2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_insert_files() -> Result<()> {
+        let tmp_file = tempfile::NamedTempFile::new()?;
+        let tmp_file_path = tmp_file.path().to_str().unwrap();
+
+        let tmp_dir = tempfile::tempdir()?;
+        let tmp_dir_path = tmp_dir.path().to_str().unwrap();
+
+        let app_context = app_ctx(tmp_dir_path, tmp_file_path)?;
+        let totp = &app_context.blueprint.server.totp;
+        let token = format!("{}_{}", "username", totp.generate_current()?);
+        let token = app_context.blueprint.extensions.auth.encrypt_aes(token)?;
+
+        let auth = app_context.blueprint.extensions.auth.clone();
+
+        let actions_db = ActionsDB::init(Arc::new(app_context)).await?;
+
+        let file_content = "file1 content";
+
+        let write = ActionsWrite {
+            title: "False title".to_string(),
+            description: "False desc".to_string(),
+            files: Some(vec![FileWrite {
+                file_name: "file1".to_string(),
+                content: file_content.to_string(),
+            }]),
+            end_time: None,
+            reference: "notice".to_string(),
+        };
+
+        let actions_request = ActionsRequest {
+            token: token.clone(),
+            group_id: "2BCS_PSD".to_string(),
+            read: None,
+            write: Some(write),
+        };
+
+        let actions_request = serde_json::to_string(&actions_request)?;
+        let actions_request = auth.encrypt_aes(actions_request)?;
+
+        let actions_result = actions_db
+            .handle_request(bytes::Bytes::from(actions_request))
+            .await;
+
+        let content_id = actions_result.message.clone();
+        let content_id = String::from_utf8(BASE64_STANDARD.decode(content_id)?)?;
+
+        let actions_result = actions_result.into_hyper_response()?;
+        assert_eq!(actions_result.status(), 200);
+
+        let stored_content = actions_db
+            .app_context
+            .runtime
+            .file
+            .read(
+                PathBuf::from(tmp_dir_path)
+                    .join(content_id)
+                    .join("file1")
+                    .to_str()
+                    .unwrap(),
+            )
+            .await?;
+
+        assert_eq!(file_content, stored_content);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_verify_token() -> Result<()> {
+        let app_ctx = app_ctx("invalid", "invalid")?;
+        let token = format!(
+            "{}_{}",
+            "username",
+            app_ctx.blueprint.server.totp.generate_current()?
         );
+        let token = app_ctx.blueprint.extensions.auth.encrypt_aes(token)?;
+
+        let app_ctx = Arc::new(app_ctx);
+
+        let actions_db = ActionsDB::init(app_ctx.clone()).await?;
+
+        let result = verify_token(&token, &actions_db.app_context);
+        assert!(result.is_ok());
+
+        let token = "invalid_token";
+        let result = verify_token(token, &actions_db.app_context);
+        assert!(result.is_err());
+
+        let token = app_ctx.blueprint.server.totp.generate_current()?;
+        let token = app_ctx.blueprint.extensions.auth.encrypt_aes(token)?;
+        let result = verify_token(&token, &actions_db.app_context);
+        assert!(result.is_err());
 
         Ok(())
     }

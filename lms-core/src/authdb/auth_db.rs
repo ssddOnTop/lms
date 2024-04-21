@@ -199,6 +199,7 @@ mod tests {
     fn app_ctx<T: AsRef<str>>(db_path: T) -> anyhow::Result<AppContext> {
         let mut module = ConfigModule::default();
         module.server.actions_db = "invalid".to_string();
+        module.server.file_db = "invalid".to_string();
 
         module.auth.aes_key = "32bytebase64encodedkey".to_string();
         module.auth.totp.totp_secret = "base32encodedkey".to_string();

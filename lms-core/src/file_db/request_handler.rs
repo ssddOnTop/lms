@@ -15,7 +15,7 @@ const MAX_FILE_SIZE: usize = 1024 * 1024 * 10; // 10MB
 
 pub struct FileRequestHandler {
     target_runtime: TargetRuntime,
-    db_path: String,
+    db_dir: String,
     is_url: bool,
 }
 
@@ -24,7 +24,7 @@ impl FileRequestHandler {
         Self {
             target_runtime,
             is_url: file_db_path.starts_with("http"), // assuming it's a valid url verified during config -> blueprint conversion
-            db_path: file_db_path,
+            db_dir: file_db_path,
         }
     }
 
@@ -45,7 +45,7 @@ impl FileRequestHandler {
     ) -> anyhow::Result<String> {
         validate_files(&files)?;
         if self.is_url {
-            let mut url = url::Url::parse(&self.db_path)?;
+            let mut url = url::Url::parse(&self.db_dir)?;
             url.set_path(&uid);
             let mut req = reqwest::Request::new(reqwest::Method::POST, url);
             let file_config =
@@ -69,7 +69,7 @@ impl FileRequestHandler {
                 return Err(anyhow::anyhow!("Failed to insert into remote server"));
             }
         } else {
-            let mut pathbuf = std::path::PathBuf::from(&self.db_path);
+            let mut pathbuf = std::path::PathBuf::from(&self.db_dir);
             pathbuf.push(&uid);
             let path = pathbuf.to_str().context("Unable to generate path")?;
             self.target_runtime
@@ -102,7 +102,7 @@ impl FileRequestHandler {
 
     pub async fn get_metadata(&self, uid: &str) -> anyhow::Result<Metadata> {
         if self.is_url {
-            let mut url = url::Url::parse(&self.db_path)?;
+            let mut url = url::Url::parse(&self.db_dir)?;
             url.set_path(uid);
             let req = reqwest::Request::new(reqwest::Method::GET, url);
             let response = self.target_runtime.http.execute(req).await.map_err(|e| {
@@ -116,7 +116,7 @@ impl FileRequestHandler {
             let body = response.to_json::<Metadata>()?.body;
             Ok(body)
         } else {
-            let mut pathbuf = std::path::PathBuf::from(&self.db_path);
+            let mut pathbuf = std::path::PathBuf::from(&self.db_dir);
             pathbuf.push(uid);
             let path = pathbuf.join("config.json");
             let path = path.to_str().context("Unable to generate path")?;
@@ -128,7 +128,7 @@ impl FileRequestHandler {
 
     pub async fn get(&self, uid: &str, file_name: &str) -> anyhow::Result<FileHolder> {
         if self.is_url {
-            let mut url = url::Url::parse(&self.db_path)?;
+            let mut url = url::Url::parse(&self.db_dir)?;
             url.set_path(uid);
             let mut req = reqwest::Request::new(reqwest::Method::POST, url);
             *req.body_mut() = Some(reqwest::Body::from(
@@ -151,7 +151,7 @@ impl FileRequestHandler {
             let body = response.to_json::<FileHolder>()?.body;
             Ok(body)
         } else {
-            let mut pathbuf = std::path::PathBuf::from(&self.db_path);
+            let mut pathbuf = std::path::PathBuf::from(&self.db_dir);
             pathbuf.push(uid);
             pathbuf.push(file_name);
             let path = pathbuf.to_str().context("Unable to generate path")?;
