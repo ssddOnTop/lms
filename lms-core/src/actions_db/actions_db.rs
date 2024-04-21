@@ -594,7 +594,10 @@ mod tests {
         assert_eq!(actions_result.status, 500);
         let decoded_msg =
             String::from_utf8(BASE64_STANDARD.decode(actions_result.message).unwrap()).unwrap();
-        assert_eq!(decoded_msg, "invalid/content_id/config.json not found");
+        assert_eq!(
+            decoded_msg,
+            "File: invalid/content_id/config.json not found"
+        );
     }
     // TODO add validation for invalid grp id
 }
