@@ -575,7 +575,7 @@ mod tests {
         assert_eq!(actions_result.status, 500);
         let decoded_msg =
             String::from_utf8(BASE64_STANDARD.decode(actions_result.message).unwrap()).unwrap();
-        assert_eq!("Unable to decrypt token", decoded_msg);
+        assert_eq!("Invalid token: Unable to decrypt token", decoded_msg);
     }
 
     #[tokio::test]
