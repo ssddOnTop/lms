@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{FileIO, HttpIO, Instance};
+use crate::{EnvIO, FileIO, HttpIO, Instance};
 
 /// The TargetRuntime struct unifies the available runtime-specific
 /// IO implementations. This is used to reduce piping IO structs all
@@ -12,6 +12,7 @@ pub struct TargetRuntime {
     /// Interface for file operations, tailored to the target environment's
     /// capabilities.
     pub file: Arc<dyn FileIO>,
+    pub env: Arc<dyn EnvIO>,
 
     /// Instance gives current time since epoch.
     pub instance: Arc<dyn Instance>,
@@ -19,6 +20,7 @@ pub struct TargetRuntime {
 
 #[cfg(test)]
 pub mod tests {
+    use std::borrow::Cow;
     use std::sync::Arc;
     use std::time::SystemTime;
 
@@ -29,7 +31,7 @@ pub mod tests {
 
     use crate::http::response::Response;
     use crate::runtime::TargetRuntime;
-    use crate::{FileIO, HttpIO, Instance};
+    use crate::{EnvIO, FileIO, HttpIO, Instance};
 
     #[derive(Default)]
     struct TestHttp {
@@ -99,6 +101,15 @@ pub mod tests {
         }
     }
 
+    #[derive(Clone)]
+    struct TestEnv {}
+
+    impl EnvIO for TestEnv {
+        fn get(&self, _key: &str) -> Option<Cow<'_, str>> {
+            Some(Cow::Borrowed("test"))
+        }
+    }
+
     pub fn init() -> TargetRuntime {
         let http = TestHttp::init();
 
@@ -106,6 +117,7 @@ pub mod tests {
         TargetRuntime {
             http,
             file: Arc::new(file),
+            env: Arc::new(TestEnv {}),
             instance: Arc::new(TestInstance {}),
         }
     }

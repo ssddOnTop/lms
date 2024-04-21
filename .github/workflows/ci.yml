@@ -14,6 +14,36 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
+
+  test_cf:
+    name: Run Tests (WASM)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./lms-wasm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-unknown-unknown
+
+      - name: Build WASM
+        run: cargo check --lib --target wasm32-unknown-unknown
+        working-directory: ./lms-wasm
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.11.0"
+
+      - name: Package Install
+        run: npm install
+
+      - name: Test CF
+        run: npm test
+
   test:
     name: Run Tests on ${{ matrix.build }}
     runs-on: ${{ matrix.os }}
@@ -67,7 +97,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Run Cargo Test
-        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --workspace --exclude lms-wasm --lcov --output-path lcov.info
 
       - name: Upload Coverage to Codecov
         if: matrix.build == 'linux-x64-gnu'

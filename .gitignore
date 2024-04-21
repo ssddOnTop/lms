@@ -1,2 +1,4 @@
 /target
 /.idea
+/lms-wasm/node_modules
+/lms-wasm/.wrangler

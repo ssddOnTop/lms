@@ -1,61 +1,59 @@
 use crate::actions_db::actions_db::ActionsDB;
 use crate::authdb::auth_db::AuthDB;
-use anyhow::{Context, Result};
+use crate::http::request::Request;
+use anyhow::Result;
 use bytes::Bytes;
-use http_body_util::{BodyExt, Full};
-use hyper::body::Incoming;
-use hyper::{Method, Request, Response};
+use http_body_util::Full;
+
+use hyper::{Method, Response};
 use lazy_static::lazy_static;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn handle_request(
-    req: Request<Incoming>,
+    req: Request,
     auth_db: Arc<RwLock<AuthDB>>,
     actions_db: Arc<ActionsDB>,
 ) -> Result<Response<Full<Bytes>>> {
-    match *req.method() {
+    match req.method {
         Method::GET => handle_get(req).await,
         Method::POST => handle_post(req, auth_db, actions_db).await,
         _ => not_found(),
     }
 }
 
-async fn into_bytes(req: Request<Incoming>) -> Result<Bytes> {
-    let bytes = req
-        .into_body()
-        .frame()
-        .await
-        .context("unable to extract frame")??
-        .into_data()
-        .map_err(|e| anyhow::anyhow!("{:?}", e))?;
-
-    Ok(bytes)
-}
-
 async fn handle_post(
-    req: Request<Incoming>,
+    req: Request,
     auth_db: Arc<RwLock<AuthDB>>,
     actions_db: Arc<ActionsDB>,
 ) -> Result<Response<Full<Bytes>>> {
-    let path = req.uri().path().to_string();
-    let body = into_bytes(req).await?;
+    let path = req.url.path().to_string();
     match path.as_str() {
         "/auth" => auth_db
             .write()
             .await
-            .handle_request(body)
+            .handle_request(req.body)
             .await
             .into_hyper_response(),
-        "/fs" => actions_db.handle_request(body).await.into_hyper_response(),
+        "/fs" => actions_db
+            .handle_request(req.body)
+            .await
+            .into_hyper_response(),
         &_ => not_found(),
     }
 }
 
 /// Get requests should return a html response
-async fn handle_get(req: hyper::Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>> {
-    let path = req.uri().path();
+async fn handle_get(req: Request) -> Result<Response<Full<Bytes>>> {
+    let path = req.url.path();
     match path {
+        "/helloworld" => {
+            let response = Response::builder()
+                .status(200)
+                .header("Content-Type", "text/html")
+                .body(Full::new(Bytes::from("Hello World!")))?;
+            Ok(response)
+        }
         &_ => not_found(),
     }
 }

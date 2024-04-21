@@ -1,0 +1,17 @@
+{
+  "name": "lms",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "deploy": "npx wrangler deploy --minify",
+    "dev-debug": "npx wrangler dev --port 19195 --env debug",
+    "dev": "npx wrangler dev --port 19195",
+    "test": "cargo install -q worker-build && worker-build && vitest --run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "miniflare": "^3.20231218.3",
+    "vitest": "^1.5.0",
+    "wrangler": "^3.24.0"
+  }
+}

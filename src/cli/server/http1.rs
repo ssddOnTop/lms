@@ -1,7 +1,7 @@
 use crate::cli::server::server_config::ServerConfig;
-use hyper::body::Incoming;
+
 use hyper::service::service_fn;
-use hyper::Request;
+use lms_core::http;
 use lms_core::http::request_handler::handle_request;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -29,8 +29,13 @@ pub async fn run(
                     let server = hyper::server::conn::http1::Builder::new()
                         .serve_connection(
                             io,
-                            service_fn(move |req: Request<Incoming>| {
-                                handle_request(req, sc.auth_db.clone(), sc.actions_db.clone())
+                            service_fn(move |req| {
+                                let sc = sc.clone();
+                                async move {
+                                    let req = http::request::Request::from_hyper(req).await?;
+                                    handle_request(req, sc.auth_db.clone(), sc.actions_db.clone())
+                                        .await
+                                }
                             }),
                         )
                         .await;
