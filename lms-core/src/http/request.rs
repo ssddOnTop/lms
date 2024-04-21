@@ -1,4 +1,4 @@
-use anyhow::Context;
+
 use http_body_util::BodyExt;
 use hyper::body::Incoming;
 
@@ -11,13 +11,8 @@ pub struct Request {
 
 impl Request {
     pub async fn from_hyper(req: hyper::Request<Incoming>) -> anyhow::Result<Self> {
-        let (part, mut body) = req.into_parts();
-        let body = body
-            .frame()
-            .await
-            .context("unable to extract frame")??
-            .into_data()
-            .map_err(|e| anyhow::anyhow!("{:?}", e))?;
+        let (part, body) = req.into_parts();
+        let body = body.collect().await?.to_bytes();
 
         Ok(Self {
             method: part.method,

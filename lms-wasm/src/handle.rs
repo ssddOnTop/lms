@@ -76,6 +76,37 @@ async fn get_app_ctx(
     };
 
     let runtime = runtime::init(env)?;
+
+    /*    runtime.file.write("config.json", r#"
+            {
+              "server": {
+                "port": 19194,
+                "host": "0.0.0.0",
+                "workers": 4,
+                "actionsDb": "./actions",
+                "fileDb": "./files"
+              },
+              "auth": {
+                "authDbPath": "./auth",
+                "totp": {
+                  "totpSecret": "base32encodedkey"
+                },
+                "aesKey": "32bytebase64encodedkey"
+              },
+              "batches": [
+                {
+                  "courses": ["course1"],
+                  "id": "batch1"
+                }
+              ],
+              "courses": {
+                "course1": {
+                  "name": "Course 1"
+                }
+              }
+        }
+    "#.as_bytes()).await?;*/
+
     let reader = ConfigReader::init(runtime.clone());
     let module = match reader.read(config_path).await {
         Ok(module) => module,
