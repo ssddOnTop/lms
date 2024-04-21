@@ -223,8 +223,7 @@ mod tests {
     // Use mockall or a similar crate to create mocks for your dependencies
     #[tokio::test]
     async fn test_insert_into_remote() {
-        let req = "{\"files\":[{\"name\":\"test.txt\",\"content\":\"AQID\"}],\"metadata\":{\"title\":\"\",\"description\":\"\",\"timestamp\":0,\"authority\":\"Student\"}}";
-
+        let req = r#"{"files":[{"name":"test.txt","content":"AQBF"}],"metadata":{"title":"","description":"","timestamp":0}}"#;
         let rt = crate::runtime::tests::init();
         let uid = gen_uid(&rt).unwrap();
 

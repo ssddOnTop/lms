@@ -1,13 +1,16 @@
 {
+  "$schema": "../../generated/.lmsrc.schema.json",
   "server": {
     "port": 19194,
-    "host": "http://invalidhost"
+    "host": "http://invalidhost",
+    "actionsDb": "./actions",
+    "fileDb": "./files"
   },
   "auth": {
     "totp": {
       "totpSecret": "base32encodedkey"
     },
-    "aesKey": "32bytebase64encodedkey",
+    "aesKey": "32bytebase64encodedkey"
   },
   "batches": [
     {

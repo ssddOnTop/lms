@@ -22,7 +22,9 @@ impl ActionsDB {
             app_context.runtime.clone(),
             app_context.blueprint.server.file_db.clone(),
         );
-        let activity = Self::fetch_activity(actions_db_path, &app_context.runtime).await?;
+        let activity = Self::fetch_activity(actions_db_path, &app_context.runtime)
+            .await
+            .unwrap_or_default();
         Ok(Self {
             app_context,
             file_request_handler,

@@ -1,14 +1,17 @@
 {
+  "$schema": "../../generated/.lmsrc.schema.json",
   "server": {
     "port": 19194,
-    "host": "localhost"
+    "host": "localhost",
+    "actionsDb": "./actions",
+    "fileDb": "./files"
   },
   "auth": {
     "totp": {
-      "totp_secret": "base32encodedkey"
+      "totpSecret": "base32encodedkey"
     },
-    "aes_key": "1234567",
-    "auth_db_path": "auth.db"
+    "aesKey": "1234567",
+    "authDbPath": "auth.db"
   },
   "batches": [
     {
