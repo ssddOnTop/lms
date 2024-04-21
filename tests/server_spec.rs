@@ -138,6 +138,7 @@ mod server_spec {
             .expect("Server did not start up correctly");
 
         for test in tests {
+            println!("{}", test.body);
             let client = Client::new();
 
             let task: tokio::task::JoinHandle<Result<_, anyhow::Error>> =

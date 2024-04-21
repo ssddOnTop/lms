@@ -47,6 +47,13 @@ async fn handle_post(
 async fn handle_get(req: Request) -> Result<Response<Full<Bytes>>> {
     let path = req.url.path();
     match path {
+        "/helloworld" => {
+            let response = Response::builder()
+                .status(200)
+                .header("Content-Type", "text/html")
+                .body(Full::new(Bytes::from("Hello World!")))?;
+            Ok(response)
+        }
         &_ => not_found(),
     }
 }

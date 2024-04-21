@@ -30,3 +30,5 @@ tokio = "1.37.0"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.42"
+tokio = {version = "1.37.0",features = ["macros"]}
+httpmock = "0.7.0"

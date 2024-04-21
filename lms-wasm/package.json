@@ -9,9 +9,9 @@
     "test": "cargo install -q worker-build && worker-build && vitest --run"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
     "miniflare": "^3.20231218.3",
-    "vitest": "^1.2.1",
-    "wrangler": "^3.24.0",
-    "@cloudflare/workers-types": "^4.20240117.0"
+    "vitest": "^1.5.0",
+    "wrangler": "^3.24.0"
   }
 }
