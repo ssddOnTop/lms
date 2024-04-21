@@ -1,0 +1,28 @@
+name = "lms-worker"
+main = "build/worker/shim.mjs"
+compatibility_date = "2023-03-22"
+
+account_id = "549ea8b9d56b91bbec00dd2dc7273da6"
+
+[build]
+command = "cargo install -q worker-build && worker-build"
+
+# the path to config must start with the binding name of respective r2 bucket.
+[vars]
+BUCKET = "MY_R2"
+
+[[r2_buckets]]
+binding = 'MY_R2'               # this binding/name is to be used in code
+bucket_name = 'configs'
+preview_bucket_name = 'configs'
+
+[env.debug.build]
+command = "cargo install -q worker-build && worker-build"
+
+[env.debug.vars]
+BUCKET = "MY_R2"
+
+[[env.debug.r2_buckets]]
+binding = 'MY_R2'               # this binding/name is to be used in code
+bucket_name = 'configs'
+preview_bucket_name = 'configs'

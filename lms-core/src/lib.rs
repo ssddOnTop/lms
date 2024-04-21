@@ -1,6 +1,8 @@
 #![allow(clippy::module_inception)]
 #![allow(clippy::mutable_key_type)]
 
+use std::borrow::Cow;
+
 pub mod actions_db;
 pub mod app_ctx;
 pub mod authdb;
@@ -13,6 +15,10 @@ pub mod uid_gen;
 
 pub fn is_default<T: Default + Eq>(val: &T) -> bool {
     *val == T::default()
+}
+
+pub trait EnvIO: Send + Sync + 'static {
+    fn get(&self, key: &str) -> Option<Cow<'_, str>>;
 }
 
 pub trait Instance: Send + Sync {

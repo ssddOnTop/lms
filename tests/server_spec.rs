@@ -1,5 +1,6 @@
 #[cfg(test)]
 pub mod test {
+    use std::borrow::Cow;
     use std::sync::Arc;
     use std::time::SystemTime;
 
@@ -7,7 +8,7 @@ pub mod test {
     use hyper::body::Bytes;
     use lms_core::http::response::Response;
     use lms_core::runtime::TargetRuntime;
-    use lms_core::{FileIO, HttpIO, Instance};
+    use lms_core::{EnvIO, FileIO, HttpIO, Instance};
     use reqwest::Client;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -85,6 +86,16 @@ pub mod test {
                 .as_millis())
         }
     }
+
+    #[derive(Clone)]
+    struct TestEnv {}
+
+    impl EnvIO for TestEnv {
+        fn get(&self, _key: &str) -> Option<Cow<'_, str>> {
+            Some(Cow::Borrowed("test"))
+        }
+    }
+
     pub fn init() -> TargetRuntime {
         let http = TestHttp::init();
 
@@ -92,6 +103,7 @@ pub mod test {
         TargetRuntime {
             http,
             file,
+            env: Arc::new(TestEnv {}),
             instance: Arc::new(TestInstance {}),
         }
     }
