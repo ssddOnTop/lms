@@ -481,7 +481,7 @@ mod tests {
             .file
             .read(
                 PathBuf::from(tmp_dir_path)
-                    .join(content_id)
+                    .join(content_id.clone())
                     .join("file1")
                     .to_str()
                     .unwrap(),
@@ -489,6 +489,31 @@ mod tests {
             .await?;
 
         assert_eq!(file_content, stored_content);
+
+        let read = ActionsRead {
+            content_id: content_id.clone(),
+            file_name: Some("file1".to_string()),
+        };
+
+        let actions_request = ActionsRequest {
+            token: token.clone(),
+            group_id: "2BCS_PSD".to_string(),
+            read: Some(read),
+            write: None,
+        };
+        let actions_request = serde_json::to_string(&actions_request)?;
+        let actions_request = auth.encrypt_aes(actions_request)?;
+
+        let actions_result = actions_db
+            .handle_request(bytes::Bytes::from(actions_request))
+            .await;
+
+        let file = actions_result.message;
+        let file = String::from_utf8(BASE64_STANDARD.decode(file)?)?;
+        let file = serde_json::from_str::<FileHolder>(&file)?;
+
+        assert_eq!(file.name, "file1");
+        assert_eq!(file.content, file_content);
 
         Ok(())
     }
