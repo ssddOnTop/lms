@@ -4,10 +4,10 @@ use anyhow::{anyhow, Context};
 use serde_json::json;
 use std::path::PathBuf;
 
-use lms_core::runtime::TargetRuntime;
-use lms_core::uid_gen::UidGenerator;
+use crate::runtime::TargetRuntime;
+use crate::uid_gen::UidGenerator;
 
-use crate::file_config::{FileHolder, InsertionInfo, LocalFileConfig, Metadata, RemoteFileConfig};
+use super::file_config::{FileHolder, InsertionInfo, LocalFileConfig, Metadata, RemoteFileConfig};
 
 const MAX_FILE_SIZE: usize = 1024 * 1024 * 10; // 10MB
 
@@ -15,7 +15,7 @@ const MAX_FILE_SIZE: usize = 1024 * 1024 * 10; // 10MB
 
 pub struct FileRequestHandler {
     target_runtime: TargetRuntime,
-    db_path: String,
+    db_dir: String,
     is_url: bool,
 }
 
@@ -24,7 +24,7 @@ impl FileRequestHandler {
         Self {
             target_runtime,
             is_url: file_db_path.starts_with("http"), // assuming it's a valid url verified during config -> blueprint conversion
-            db_path: file_db_path,
+            db_dir: file_db_path,
         }
     }
 
@@ -45,7 +45,7 @@ impl FileRequestHandler {
     ) -> anyhow::Result<String> {
         validate_files(&files)?;
         if self.is_url {
-            let mut url = url::Url::parse(&self.db_path)?;
+            let mut url = url::Url::parse(&self.db_dir)?;
             url.set_path(&uid);
             let mut req = reqwest::Request::new(reqwest::Method::POST, url);
             let file_config =
@@ -69,7 +69,7 @@ impl FileRequestHandler {
                 return Err(anyhow::anyhow!("Failed to insert into remote server"));
             }
         } else {
-            let mut pathbuf = std::path::PathBuf::from(&self.db_path);
+            let mut pathbuf = std::path::PathBuf::from(&self.db_dir);
             pathbuf.push(&uid);
             let path = pathbuf.to_str().context("Unable to generate path")?;
             self.target_runtime
@@ -100,10 +100,10 @@ impl FileRequestHandler {
         Ok(uid)
     }
 
-    pub async fn get_metadata(&self, uid: String) -> anyhow::Result<Metadata> {
+    pub async fn get_metadata(&self, uid: &str) -> anyhow::Result<Metadata> {
         if self.is_url {
-            let mut url = url::Url::parse(&self.db_path)?;
-            url.set_path(&uid);
+            let mut url = url::Url::parse(&self.db_dir)?;
+            url.set_path(uid);
             let req = reqwest::Request::new(reqwest::Method::GET, url);
             let response = self.target_runtime.http.execute(req).await.map_err(|e| {
                 anyhow!("Failed to get metadata from remote server with err: {}", e)
@@ -116,8 +116,8 @@ impl FileRequestHandler {
             let body = response.to_json::<Metadata>()?.body;
             Ok(body)
         } else {
-            let mut pathbuf = std::path::PathBuf::from(&self.db_path);
-            pathbuf.push(&uid);
+            let mut pathbuf = std::path::PathBuf::from(&self.db_dir);
+            pathbuf.push(uid);
             let path = pathbuf.join("config.json");
             let path = path.to_str().context("Unable to generate path")?;
             let content = self.target_runtime.file.read(path).await?;
@@ -126,10 +126,10 @@ impl FileRequestHandler {
         }
     }
 
-    pub async fn get(&self, uid: String, file_name: &str) -> anyhow::Result<FileHolder> {
+    pub async fn get(&self, uid: &str, file_name: &str) -> anyhow::Result<FileHolder> {
         if self.is_url {
-            let mut url = url::Url::parse(&self.db_path)?;
-            url.set_path(&uid);
+            let mut url = url::Url::parse(&self.db_dir)?;
+            url.set_path(uid);
             let mut req = reqwest::Request::new(reqwest::Method::POST, url);
             *req.body_mut() = Some(reqwest::Body::from(
                 json!({
@@ -151,14 +151,14 @@ impl FileRequestHandler {
             let body = response.to_json::<FileHolder>()?.body;
             Ok(body)
         } else {
-            let mut pathbuf = std::path::PathBuf::from(&self.db_path);
-            pathbuf.push(&uid);
+            let mut pathbuf = std::path::PathBuf::from(&self.db_dir);
+            pathbuf.push(uid);
             pathbuf.push(file_name);
             let path = pathbuf.to_str().context("Unable to generate path")?;
             let content = self.target_runtime.file.read(path).await?;
             Ok(FileHolder {
                 name: file_name.to_string(),
-                content: content.into_bytes(),
+                content,
             })
         }
     }
@@ -187,9 +187,9 @@ fn validate_files(files: &Vec<FileHolder>) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::file_config::FileHolder;
     use super::*;
-    use crate::file_config::FileHolder;
-    use lms_core::authdb::auth_actors::Authority;
+    use crate::authdb::auth_actors::Authority;
     use std::path::PathBuf;
 
     fn start_mock_server() -> httpmock::MockServer {
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_validate_files_exceeds_size() {
-        let large_content = vec![0; MAX_FILE_SIZE + 1]; // content larger than 10MB
+        let large_content = String::from_utf8(vec![b'0'; MAX_FILE_SIZE + 1]).unwrap(); // content larger than 10MB
         let file_holder = FileHolder {
             name: "large_file.txt".to_string(),
             content: large_content,
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_validate_files_within_limit() {
-        let content = vec![0; MAX_FILE_SIZE]; // exactly 10MB
+        let content = String::from_utf8(vec![b'0'; MAX_FILE_SIZE]).unwrap(); // exactly 10MB
         let file_holder = FileHolder {
             name: "valid_size_file.txt".to_string(),
             content,
@@ -220,12 +220,10 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // Use mockall or a similar crate to create mocks for your dependencies
     #[tokio::test]
     async fn test_insert_into_remote() {
-        let req = "{\"files\":[{\"name\":\"test.txt\",\"content\":\"AQID\"}],\"metadata\":{\"title\":\"\",\"description\":\"\",\"timestamp\":0,\"authority\":\"Student\"}}";
-
-        let rt = crate::tests::init();
+        let req = r#"{"files":[{"name":"test.txt","content":"AQBF"}],"metadata":{"title":"","description":"","timestamp":0}}"#;
+        let rt = crate::runtime::tests::init();
         let uid = gen_uid(&rt).unwrap();
 
         let server = start_mock_server();
@@ -240,14 +238,13 @@ mod tests {
 
         let files = vec![FileHolder {
             name: "test.txt".to_string(),
-            content: vec![1, 2, 3],
+            content: "AQBF".to_string(),
         }];
         let insertion_info = InsertionInfo {
             title: "".to_string(),
             description: "".to_string(),
             timestamp: 0,
             end_time: None,
-            authority: Default::default(),
         };
 
         let result = handler
@@ -258,19 +255,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_insert_fail_remote() {
-        let mut handler =
-            FileRequestHandler::new(crate::tests::init(), "http://example.com".to_string());
+        let rt = crate::runtime::tests::init();
+        let mut handler = FileRequestHandler::new(rt, "http://example.com".to_string());
 
         let files = vec![FileHolder {
             name: "test.txt".to_string(),
-            content: vec![1, 2, 3],
+            content: "AQBF".to_string(),
         }];
         let insertion_info = InsertionInfo {
             title: "".to_string(),
             description: "".to_string(),
             timestamp: 0,
             end_time: None,
-            authority: Default::default(),
         };
 
         let result = handler.insert(insertion_info, files).await;
@@ -281,33 +277,32 @@ mod tests {
     async fn test_round_local() {
         let tmpdir = tempfile::tempdir().unwrap();
         let name = tmpdir.path().to_str().unwrap();
+        let rt = crate::runtime::tests::init();
 
-        let handler = FileRequestHandler::new(crate::tests::init(), name.to_string());
+        let handler = FileRequestHandler::new(rt, name.to_string());
         let info = InsertionInfo {
             title: "title".to_string(),
             description: "description".to_string(),
             timestamp: 1,
             end_time: None,
-            authority: Default::default(),
         };
 
         let file_name = "foo.txt";
-        let content = vec![1, 2, 3];
+        let content = "AQBF".to_string();
         let meta = FileHolder {
             name: file_name.to_string(),
             content: content.clone(),
         };
         let uid = handler.insert(info, vec![meta]).await.unwrap();
 
-        let result = handler.get_metadata(uid.clone()).await;
+        let result = handler.get_metadata(&uid).await;
         let md = result.unwrap();
         assert_eq!(md.title, "title");
         assert_eq!(md.description, "description");
         assert_eq!(md.timestamp, 1);
         assert_eq!(md.end_time, None);
-        assert_eq!(md.authority, Authority::default());
 
-        let result = handler.get(uid, file_name).await.unwrap();
+        let result = handler.get(&uid, file_name).await.unwrap();
         assert_eq!(result.name, file_name);
         assert_eq!(result.content, content);
     }
@@ -315,19 +310,19 @@ mod tests {
     #[tokio::test]
     async fn test_get_metadata_remote() {
         let server = start_mock_server();
+        let rt = crate::runtime::tests::init();
 
-        let handler = FileRequestHandler::new(crate::tests::init(), server.base_url());
+        let handler = FileRequestHandler::new(rt, server.base_url());
 
         let info = InsertionInfo {
             title: "title".to_string(),
             description: "description".to_string(),
             timestamp: 1,
             end_time: None,
-            authority: Default::default(),
         };
         let meta = FileHolder {
             name: "foo.txt".to_string(),
-            content: vec![1, 2, 3],
+            content: "AQBF".to_string(),
         };
 
         let sample_metadata = Metadata {
@@ -335,7 +330,6 @@ mod tests {
             description: "description".to_string(),
             timestamp: 1,
             end_time: Some(2),
-            authority: Authority::Admin,
         };
         let uid = "sample".to_string();
 
@@ -345,7 +339,7 @@ mod tests {
                 .body(serde_json::to_string(&sample_metadata).unwrap());
         });
 
-        let result = handler.get_metadata(uid).await;
+        let result = handler.get_metadata(&uid).await;
         let md = result.unwrap();
         assert_eq!(sample_metadata, md);
     }

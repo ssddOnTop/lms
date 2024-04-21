@@ -25,7 +25,9 @@ pub struct Extensions {
 pub struct Server {
     pub port: u16,
     pub hostname: IpAddr,
-    pub token: TOTP,
+    pub totp: TOTP,
+    pub file_db: String,
+    pub actions_db: String,
 }
 
 impl TryFrom<config::Server> for Server {
@@ -44,13 +46,15 @@ impl TryFrom<config::Server> for Server {
         Ok(Server {
             port,
             hostname,
-            token: TOTP::new(
+            totp: TOTP::new(
                 Algorithm::SHA1,
                 8,
                 1,
                 server.request_timeout.unwrap_or(86400),
                 Secret::Raw(server.timeout_key.unwrap().as_bytes().to_vec()).to_bytes()?,
             )?,
+            file_db: server.file_db,
+            actions_db: server.actions_db,
         })
     }
 }
@@ -112,6 +116,20 @@ fn validate_config(
     if config.auth.auth_db_path.starts_with("http") {
         url::Url::parse(&config.auth.auth_db_path)
             .map_err(|_| anyhow!("Invalid URL for AuthDB"))?;
+    } else if config.auth.auth_db_path.is_empty() {
+        return Err(anyhow!("AuthDB path is required"));
+    }
+    if config.server.actions_db.starts_with("http") {
+        url::Url::parse(&config.server.actions_db)
+            .map_err(|_| anyhow!("Invalid URL for ActionsDB"))?;
+    } else if config.server.actions_db.is_empty() {
+        return Err(anyhow!("ActionsDB path is required"));
+    }
+
+    if config.server.file_db.starts_with("http") {
+        url::Url::parse(&config.server.file_db).map_err(|_| anyhow!("Invalid URL for FileDB"))?;
+    } else if config.server.file_db.is_empty() {
+        return Err(anyhow!("FileDB dir is required"));
     }
 
     if config.auth.aes_key.is_empty() || config.auth.aes_key.len() < 8 {

@@ -56,6 +56,9 @@ impl ConfigModule {
             anyhow::bail!("authDbPath must be at least 8 characters long");
         }
 
+        self.config.server.actions_db =
+            ConfigModule::resolve_path(&self.config.server.actions_db, parent_dir);
+
         self.config.auth.auth_db_path =
             ConfigModule::resolve_path(&self.config.auth.auth_db_path, parent_dir);
 
@@ -107,6 +110,9 @@ impl ConfigModule {
         })
     }
     fn resolve_path(src: &str, root_dir: Option<&Path>) -> String {
+        if src.starts_with("http") {
+            return src.to_string();
+        }
         if Path::new(&src).is_absolute() {
             src.to_string()
         } else {

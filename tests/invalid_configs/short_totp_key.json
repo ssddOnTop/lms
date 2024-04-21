@@ -1,7 +1,10 @@
 {
+  "$schema": "../../generated/.lmsrc.schema.json",
   "server": {
     "port": 19194,
-    "host": "localhost"
+    "host": "localhost",
+    "actionsDb": "./actions",
+    "fileDb": "./files"
   },
   "auth": {
     "authDbPath": "http://localhost:19194/auth",

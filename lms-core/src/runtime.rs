@@ -57,7 +57,7 @@ pub mod tests {
 
     #[derive(Clone)]
     struct TestFileIO {
-        hm: DashMap<String, Vec<u8>>,
+        hm: DashMap<String, String>,
     }
 
     impl TestFileIO {
@@ -69,7 +69,8 @@ pub mod tests {
     #[async_trait::async_trait]
     impl FileIO for TestFileIO {
         async fn write<'a>(&'a self, path: &'a str, content: &'a [u8]) -> anyhow::Result<()> {
-            self.hm.insert(path.to_string(), content.to_vec());
+            self.hm
+                .insert(path.to_string(), String::from_utf8(content.to_vec())?);
             Ok(())
         }
 
@@ -79,7 +80,7 @@ pub mod tests {
                 .get(path)
                 .context(format!("File: {} not found", path))?
                 .clone();
-            Ok(String::from_utf8(buffer)?)
+            Ok(buffer)
         }
 
         async fn create_dirs<'a>(&'a self, _path: &'a str) -> Result<()> {

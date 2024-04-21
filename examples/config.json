@@ -3,7 +3,9 @@
   "server": {
     "port": 19194,
     "host": "0.0.0.0",
-    "workers": 4
+    "workers": 4,
+    "actionsDb": "./actions",
+    "fileDb": "./files"
   },
   "auth": {
     "authDbPath": "./auth",

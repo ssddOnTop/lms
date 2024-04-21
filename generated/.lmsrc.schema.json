@@ -48,6 +48,12 @@
     },
     "CourseInfo": {
       "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "name": {
           "type": "string"
         }
@@ -59,6 +65,12 @@
     },
     "Server": {
       "properties": {
+        "actionsDb": {
+          "type": "string"
+        },
+        "fileDb": {
+          "type": "string"
+        },
         "host": {
           "type": [
             "string",
@@ -96,6 +108,10 @@
           ]
         }
       },
+      "required": [
+        "actionsDb",
+        "fileDb"
+      ],
       "type": "object"
     },
     "TotpSettings": {

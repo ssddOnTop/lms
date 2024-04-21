@@ -62,6 +62,8 @@ impl AuthDB {
                             batch: signup_details.batch,
                         };
 
+                        let token = gen_token(&user.username, self.app_context.deref());
+
                         self.users.insert(user);
                         match user_entry(self.app_context.deref(), self.users.clone()).await {
                             Ok(users) => self.users = users,
@@ -69,7 +71,6 @@ impl AuthDB {
                                 return auth_err(format!("Unable to register user: {}", e));
                             }
                         };
-                        let token = self.app_context.blueprint.server.token.generate_current();
                         match token {
                             Ok(token) => auth_succ(signup_details.name, token),
                             Err(_) => auth_err("Unable to generate token"),
@@ -84,17 +85,32 @@ impl AuthDB {
     async fn login(&self, req: AuthRequest) -> AuthResult {
         // TODO respond with token
         match verify(&req.username, &req.password, &self.users) {
-            Ok(user) => {
-                let token = self.app_context.blueprint.server.token.generate_current();
-                match token {
-                    Ok(token) => auth_succ(user.name, token),
-                    Err(_) => auth_err("Unable to generate token"),
-                }
-            }
+            Ok(user) => match gen_token(&user.username, self.app_context.deref()) {
+                Ok(token) => auth_succ(user.name, token),
+                Err(_) => auth_err("Unable to generate token"),
+            },
             Err(e) => auth_err(e.to_string()),
         }
     }
 }
+
+fn gen_token(username: &str, app_context: &AppContext) -> Result<String> {
+    let token = app_context
+        .blueprint
+        .server
+        .totp
+        .generate_current()
+        .map_err(|_| anyhow!("Unable to generate token"))?;
+    let format = format!("{}_{}", username, token);
+    let token = app_context
+        .blueprint
+        .extensions
+        .auth
+        .encrypt_aes(format)
+        .map_err(|_| anyhow!("Unable to generate token, encryption err"))?;
+    Ok(token)
+}
+
 pub async fn user_entry(app_context: &AppContext, users: Users) -> Result<Users> {
     let password = String::from_utf8(app_context.blueprint.extensions.auth.get_pw().to_vec())?;
 
@@ -182,6 +198,9 @@ mod tests {
 
     fn app_ctx<T: AsRef<str>>(db_path: T) -> anyhow::Result<AppContext> {
         let mut module = ConfigModule::default();
+        module.server.actions_db = "invalid".to_string();
+        module.server.file_db = "invalid".to_string();
+
         module.auth.aes_key = "32bytebase64encodedkey".to_string();
         module.auth.totp.totp_secret = "base32encodedkey".to_string();
         module.auth.auth_db_path = db_path.as_ref().to_string();
@@ -199,6 +218,7 @@ mod tests {
         let app_ctx = AppContext { blueprint, runtime };
         Ok(app_ctx)
     }
+
     async fn get_db() -> anyhow::Result<AuthDB> {
         let app_ctx = Arc::new(app_ctx("foobar")?);
         let auth_db = AuthDB::init(app_ctx).await?;
@@ -244,6 +264,7 @@ mod tests {
         assert_eq!(err.message, "No necessary signup details found");
         Ok(())
     }
+
     #[tokio::test]
     async fn test_user_entry_url() -> anyhow::Result<()> {
         let server = start_mock_server();
@@ -261,6 +282,7 @@ mod tests {
         assert_eq!(expected, actual);
         Ok(())
     }
+
     #[tokio::test]
     async fn test_login() -> anyhow::Result<()> {
         let mut auth_db = get_db().await?;
