@@ -117,7 +117,7 @@ impl ActionsDB {
         let content_id = self
             .activity
             .insert(
-                actions_request.group_id,
+                actions_request.group_id, // TODO add validation for invalid grp id
                 info,
                 write
                     .files
@@ -521,4 +521,80 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_invalid_token() {
+        let app_context = app_ctx("invalid", "invalid").unwrap();
+        let actions_db = ActionsDB::init(Arc::new(app_context)).await.unwrap();
+
+        let actions_request = ActionsRequest {
+            token: "invalid_token".to_string(),
+            group_id: "2BCS_PSD".to_string(),
+            read: None,
+            write: None,
+        };
+
+        let actions_request = serde_json::to_string(&actions_request).unwrap();
+        let actions_request = actions_db
+            .app_context
+            .blueprint
+            .extensions
+            .auth
+            .encrypt_aes(actions_request)
+            .unwrap();
+
+        let actions_result = actions_db
+            .handle_request(bytes::Bytes::from(actions_request))
+            .await;
+
+        assert_eq!(actions_result.status, 500);
+        let decoded_msg =
+            String::from_utf8(BASE64_STANDARD.decode(actions_result.message).unwrap()).unwrap();
+        assert_eq!("Unable to decrypt token", decoded_msg);
+    }
+
+    #[tokio::test]
+    async fn test_invalid_content_id() {
+        let app_context = app_ctx("invalid", "invalid").unwrap();
+        let actions_db = ActionsDB::init(Arc::new(app_context)).await.unwrap();
+
+        let totp = &actions_db.app_context.blueprint.server.totp;
+        let token = format!("{}_{}", "username", totp.generate_current().unwrap());
+        let token = actions_db
+            .app_context
+            .blueprint
+            .extensions
+            .auth
+            .encrypt_aes(token)
+            .unwrap();
+
+        let actions_request = ActionsRequest {
+            token: token.clone(),
+            group_id: "invalid_group_id".to_string(),
+            read: Some(ActionsRead {
+                content_id: "content_id".to_string(),
+                file_name: None,
+            }),
+            write: None,
+        };
+
+        let actions_request = serde_json::to_string(&actions_request).unwrap();
+        let actions_request = actions_db
+            .app_context
+            .blueprint
+            .extensions
+            .auth
+            .encrypt_aes(actions_request)
+            .unwrap();
+
+        let actions_result = actions_db
+            .handle_request(bytes::Bytes::from(actions_request))
+            .await;
+
+        assert_eq!(actions_result.status, 500);
+        let decoded_msg =
+            String::from_utf8(BASE64_STANDARD.decode(actions_result.message).unwrap()).unwrap();
+        assert_eq!(decoded_msg, "invalid/content_id/config.json not found");
+    }
+    // TODO add validation for invalid grp id
 }
