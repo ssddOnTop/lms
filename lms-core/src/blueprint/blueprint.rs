@@ -25,7 +25,7 @@ pub struct Extensions {
 pub struct Server {
     pub port: u16,
     pub hostname: IpAddr,
-    pub token: TOTP,
+    pub totp: TOTP,
     pub file_db: String,
     pub actions_db: String,
 }
@@ -46,7 +46,7 @@ impl TryFrom<config::Server> for Server {
         Ok(Server {
             port,
             hostname,
-            token: TOTP::new(
+            totp: TOTP::new(
                 Algorithm::SHA1,
                 8,
                 1,
@@ -70,9 +70,6 @@ impl TryFrom<config::config_module::Extensions> for Extensions {
             auth: ext
                 .auth
                 .ok_or_else(|| anyhow!("Auth Provider not found in config"))?,
-            // activity: ext
-            //     .actions
-            //     .ok_or_else(|| anyhow!("Actions not found in config"))?,
         })
     }
 }
@@ -119,6 +116,14 @@ fn validate_config(
     if config.auth.auth_db_path.starts_with("http") {
         url::Url::parse(&config.auth.auth_db_path)
             .map_err(|_| anyhow!("Invalid URL for AuthDB"))?;
+    } else if config.auth.auth_db_path.is_empty() {
+        return Err(anyhow!("AuthDB path is required"));
+    }
+    if config.server.actions_db.starts_with("http") {
+        url::Url::parse(&config.server.actions_db)
+            .map_err(|_| anyhow!("Invalid URL for ActionsDB"))?;
+    } else if config.server.actions_db.is_empty() {
+        return Err(anyhow!("ActionsDB path is required"));
     }
 
     if config.auth.aes_key.is_empty() || config.auth.aes_key.len() < 8 {

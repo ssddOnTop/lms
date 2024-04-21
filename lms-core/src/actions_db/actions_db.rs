@@ -114,7 +114,8 @@ impl ActionsDB {
             end_time: write.end_time,
         };
 
-        self.activity
+        let content_id = self
+            .activity
             .insert(
                 actions_request.group_id,
                 info,
@@ -147,7 +148,7 @@ impl ActionsDB {
                 .await?;
         }
 
-        Ok("ok".to_string())
+        Ok(content_id)
     }
     async fn validate_write(&self, write: &ActionsWrite) -> Result<()> {
         if write.reference.is_empty() {
@@ -183,7 +184,7 @@ fn verify_token(token: &str, app_context: &AppContext) -> Result<()> {
     let token = app_context
         .blueprint
         .server
-        .token
+        .totp
         .check_current(token)
         .map_err(|_| anyhow!("Invalid token"))?;
     if !token {
@@ -207,5 +208,167 @@ fn actions_success<T: AsRef<[u8]>>(message: T) -> ActionsResult {
     ActionsResult {
         status: 200,
         message,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::actions_db::actions::{ActionsContent, ActionsRead};
+    use crate::authdb::auth_actors::Users;
+    use crate::blueprint::Blueprint;
+    use crate::config::batch_info::BatchInfo;
+    use crate::config::config_module::ConfigModule;
+    use crate::config::course_info::CourseInfo;
+    use crate::file_db::file_config::Metadata;
+    use lms_auth::auth::AuthProvider;
+    use lms_auth::local_crypto::hash_256;
+
+    fn app_ctx<T: AsRef<str>>(db: T) -> Result<AppContext> {
+        let mut module = ConfigModule::default();
+        module.auth.aes_key = "32bytebase64encodedkey".to_string();
+        module.auth.totp.totp_secret = "base32encodedkey".to_string();
+        module.auth.auth_db_path = "invalid".to_string();
+
+        module.courses.insert(
+            "course1".to_string(),
+            CourseInfo {
+                name: "Course 1".to_string(),
+                description: Some("Course 1 description".to_string()),
+            },
+        );
+        module.courses.insert(
+            "course2".to_string(),
+            CourseInfo {
+                name: "Course 2".to_string(),
+                description: None,
+            },
+        );
+
+        module.batches = vec![BatchInfo {
+            id: "22BCS".to_string(),
+            courses: vec!["course1".to_string(), "course2".to_string()],
+        }];
+
+        module.server.actions_db = db.as_ref().to_string();
+
+        module.extensions.users = Some(Users::default());
+
+        let totp = module.config.auth.totp.clone().into_totp()?;
+        let auth = AuthProvider::init(
+            module.config.auth.auth_db_path.clone(),
+            totp,
+            hash_256(&module.config.auth.aes_key).clone(),
+        )?;
+        module.extensions.auth = Some(auth);
+
+        let blueprint = Blueprint::try_from(module)?;
+        let runtime = crate::runtime::tests::init();
+        let app_ctx = AppContext { blueprint, runtime };
+        Ok(app_ctx)
+    }
+
+    #[tokio::test]
+    async fn test_actions_db() -> Result<()> {
+        let tmp_file = tempfile::NamedTempFile::new()?;
+        let tmp_file_path = tmp_file.path().to_str().unwrap();
+
+        let app_context = app_ctx(tmp_file_path)?;
+        let totp = &app_context.blueprint.server.totp;
+        let token = format!("{}_{}", "username", totp.generate_current()?);
+        let token = app_context.blueprint.extensions.auth.encrypt_aes(token)?;
+
+        let auth = app_context.blueprint.extensions.auth.clone();
+
+        let actions_db = ActionsDB::init(Arc::new(app_context)).await?;
+
+        let write = ActionsWrite {
+            title: "False title".to_string(),
+            description: "False desc".to_string(),
+            files: None,
+            end_time: None,
+            reference: "notice".to_string(),
+        };
+
+        let actions_request = ActionsRequest {
+            token: token.clone(),
+            group_id: "2BCS_PSD".to_string(),
+            read: None,
+            write: Some(write),
+        };
+        let actions_request = serde_json::to_string(&actions_request)?;
+        let actions_request = auth.encrypt_aes(actions_request)?;
+
+        let actions_result = actions_db
+            .handle_request(bytes::Bytes::from(actions_request))
+            .await;
+        let content_id = actions_result.message.clone();
+        let content_id = String::from_utf8(BASE64_STANDARD.decode(content_id)?)?;
+
+        let actions_result = actions_result.into_hyper_response()?;
+        assert_eq!(actions_result.status(), 200);
+        let expected = r#"{"actions":{"2BCS_PSD":[{"is_notif":true,"content_id":"REPLACE"}]}}"#
+            .replace("REPLACE", &content_id);
+        assert_eq!(
+            actions_db
+                .app_context
+                .runtime
+                .file
+                .read(tmp_file_path)
+                .await?,
+            expected
+        );
+
+        let read = ActionsRead {
+            content_id: content_id.clone(),
+            file_name: None,
+        };
+
+        let actions_request = ActionsRequest {
+            token: token.clone(),
+            group_id: "2BCS_PSD".to_string(),
+            read: Some(read),
+            write: None,
+        };
+        let actions_request = serde_json::to_string(&actions_request)?;
+        let actions_request = auth.encrypt_aes(actions_request)?;
+
+        let actions_result = actions_db
+            .handle_request(bytes::Bytes::from(actions_request))
+            .await;
+        let config = actions_result.message.clone();
+        let config = String::from_utf8(BASE64_STANDARD.decode(config)?)?;
+        let config = serde_json::from_str::<Metadata>(&config)?;
+        assert_eq!(config.title, "False title");
+        assert_eq!(config.description, "False desc");
+
+        let actions_result = actions_result.into_hyper_response()?;
+        assert_eq!(actions_result.status(), 200);
+
+        let actions_request = ActionsRequest {
+            token,
+            group_id: "2BCS_PSD".to_string(),
+            read: None,
+            write: None,
+        };
+
+        let actions_request = serde_json::to_string(&actions_request)?;
+        let actions_request = auth.encrypt_aes(actions_request)?;
+
+        let actions_result = actions_db
+            .handle_request(bytes::Bytes::from(actions_request))
+            .await;
+        let actions = actions_result.message.clone();
+        let actions = String::from_utf8(BASE64_STANDARD.decode(actions)?)?;
+        let actions = serde_json::from_str::<Vec<ActionsContent>>(&actions)?;
+
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].content_id, content_id);
+        assert!(actions[0].is_notif);
+
+        let actions_result = actions_result.into_hyper_response()?;
+        assert_eq!(actions_result.status(), 200);
+
+        Ok(())
     }
 }

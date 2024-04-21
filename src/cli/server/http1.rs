@@ -30,12 +30,7 @@ pub async fn run(
                         .serve_connection(
                             io,
                             service_fn(move |req: Request<Incoming>| {
-                                handle_request(
-                                    req,
-                                    sc.app_ctx.clone(),
-                                    sc.auth_db.clone(),
-                                    sc.actions_db.clone(),
-                                )
+                                handle_request(req, sc.auth_db.clone(), sc.actions_db.clone())
                             }),
                         )
                         .await;

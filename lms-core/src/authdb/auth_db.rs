@@ -98,7 +98,7 @@ fn gen_token(username: &str, app_context: &AppContext) -> Result<String> {
     let token = app_context
         .blueprint
         .server
-        .token
+        .totp
         .generate_current()
         .map_err(|_| anyhow!("Unable to generate token"))?;
     let format = format!("{}_{}", username, token);
@@ -198,6 +198,8 @@ mod tests {
 
     fn app_ctx<T: AsRef<str>>(db_path: T) -> anyhow::Result<AppContext> {
         let mut module = ConfigModule::default();
+        module.server.actions_db = "invalid".to_string();
+
         module.auth.aes_key = "32bytebase64encodedkey".to_string();
         module.auth.totp.totp_secret = "base32encodedkey".to_string();
         module.auth.auth_db_path = db_path.as_ref().to_string();

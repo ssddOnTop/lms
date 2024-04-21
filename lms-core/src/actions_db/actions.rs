@@ -67,11 +67,11 @@ impl ActionsActivity {
         files: Vec<FileHolder>,
         file_request_handler: &FileRequestHandler,
         is_notif: bool,
-    ) -> Result<()> {
+    ) -> Result<String> {
         let content_id = file_request_handler.insert(info, files).await?;
         let new_action = ActionsContent {
             is_notif,
-            content_id,
+            content_id: content_id.clone(),
         };
 
         if let Some(mut actions) = self.get_actions(&group_id) {
@@ -80,7 +80,7 @@ impl ActionsActivity {
         } else {
             self.actions.insert(group_id.to_string(), vec![new_action]);
         }
-        Ok(())
+        Ok(content_id)
     }
     pub fn get_actions(&self, group_id: &str) -> Option<Vec<ActionsContent>> {
         let val = self.actions.get(group_id)?;

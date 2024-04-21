@@ -16,6 +16,7 @@ pub struct ServerConfig {
 impl ServerConfig {
     pub async fn new(blueprint: Blueprint) -> Result<Self> {
         let app_ctx = AppContext {
+            // avoid storing app ctx if it's not used anywhere
             runtime: rt::init(),
             blueprint,
         };

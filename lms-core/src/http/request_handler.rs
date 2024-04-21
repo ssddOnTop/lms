@@ -1,5 +1,4 @@
 use crate::actions_db::actions_db::ActionsDB;
-use crate::app_ctx::AppContext;
 use crate::authdb::auth_db::AuthDB;
 use anyhow::{Context, Result};
 use bytes::Bytes;
@@ -12,13 +11,12 @@ use tokio::sync::RwLock;
 
 pub async fn handle_request(
     req: Request<Incoming>,
-    app_ctx: Arc<AppContext>,
     auth_db: Arc<RwLock<AuthDB>>,
     actions_db: Arc<ActionsDB>,
 ) -> Result<Response<Full<Bytes>>> {
     match *req.method() {
-        Method::GET => handle_get(req, app_ctx).await,
-        Method::POST => handle_post(req, app_ctx, auth_db, actions_db).await,
+        Method::GET => handle_get(req).await,
+        Method::POST => handle_post(req, auth_db, actions_db).await,
         _ => not_found(),
     }
 }
@@ -37,7 +35,6 @@ async fn into_bytes(req: Request<Incoming>) -> Result<Bytes> {
 
 async fn handle_post(
     req: Request<Incoming>,
-    _app_ctx: Arc<AppContext>,
     auth_db: Arc<RwLock<AuthDB>>,
     actions_db: Arc<ActionsDB>,
 ) -> Result<Response<Full<Bytes>>> {
@@ -56,10 +53,7 @@ async fn handle_post(
 }
 
 /// Get requests should return a html response
-async fn handle_get(
-    req: hyper::Request<hyper::body::Incoming>,
-    _app_ctx: Arc<AppContext>,
-) -> Result<Response<Full<Bytes>>> {
+async fn handle_get(req: hyper::Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>> {
     let path = req.uri().path();
     match path {
         &_ => not_found(),

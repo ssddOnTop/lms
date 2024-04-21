@@ -48,6 +48,12 @@
     },
     "CourseInfo": {
       "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "name": {
           "type": "string"
         }

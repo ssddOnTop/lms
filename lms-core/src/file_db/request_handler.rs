@@ -220,7 +220,6 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // Use mockall or a similar crate to create mocks for your dependencies
     #[tokio::test]
     async fn test_insert_into_remote() {
         let req = r#"{"files":[{"name":"test.txt","content":"AQBF"}],"metadata":{"title":"","description":"","timestamp":0}}"#;
