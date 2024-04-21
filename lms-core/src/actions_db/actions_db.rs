@@ -346,7 +346,7 @@ mod tests {
         assert_eq!(actions_result.status(), 200);
 
         let actions_request = ActionsRequest {
-            token,
+            token: token.clone(),
             group_id: "2BCS_PSD".to_string(),
             read: None,
             write: None,
@@ -368,6 +368,49 @@ mod tests {
 
         let actions_result = actions_result.into_hyper_response()?;
         assert_eq!(actions_result.status(), 200);
+
+        let write = ActionsWrite {
+            title: "False title again".to_string(),
+            description: "False desc again".to_string(),
+            files: None,
+            end_time: None,
+            reference: "notice".to_string(),
+        };
+
+        let actions_request = ActionsRequest {
+            token: token.clone(),
+            group_id: "2BCS_OOP".to_string(),
+            read: None,
+            write: Some(write),
+        };
+        let actions_request = serde_json::to_string(&actions_request)?;
+        let actions_request = auth.encrypt_aes(actions_request)?;
+
+        let actions_result = actions_db
+            .handle_request(bytes::Bytes::from(actions_request))
+            .await;
+        let content_id_new = actions_result.message.clone();
+        let content_id_new = String::from_utf8(BASE64_STANDARD.decode(content_id_new)?)?;
+
+        let actions_result = actions_result.into_hyper_response()?;
+        assert_eq!(actions_result.status(), 200);
+        let expected = r#"{"actions":{"2BCS_PSD":[{"is_notif":true,"content_id":"REPLACE"}],"2BCS_OOP":[{"is_notif":true,"content_id":"REP_NEW"}]}}"#
+            .replace("REPLACE", &content_id).replace("REP_NEW", &content_id_new);
+
+        let expected = serde_json::from_str::<ActionsActivity>(&expected)?;
+        let actual = serde_json::from_str::<ActionsActivity>(
+            &actions_db
+                .app_context
+                .runtime
+                .file
+                .read(tmp_file_path)
+                .await?,
+        )?;
+
+        assert_eq!(
+            serde_json::to_string(&expected)?,
+            serde_json::to_string(&actual)?
+        );
 
         Ok(())
     }
