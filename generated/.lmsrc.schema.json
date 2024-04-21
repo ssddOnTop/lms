@@ -59,6 +59,12 @@
     },
     "Server": {
       "properties": {
+        "actionsDb": {
+          "type": "string"
+        },
+        "fileDb": {
+          "type": "string"
+        },
         "host": {
           "type": [
             "string",
@@ -96,6 +102,10 @@
           ]
         }
       },
+      "required": [
+        "actionsDb",
+        "fileDb"
+      ],
       "type": "object"
     },
     "TotpSettings": {
@@ -154,17 +164,13 @@
     },
     "server": {
       "$ref": "#/definitions/Server"
-    },
-    "workingDir": {
-      "type": "string"
     }
   },
   "required": [
     "auth",
     "batches",
     "courses",
-    "server",
-    "workingDir"
+    "server"
   ],
   "title": "Config",
   "type": "object"

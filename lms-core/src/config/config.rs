@@ -46,6 +46,7 @@ pub struct Server {
     #[serde(default, skip_serializing_if = "is_default")]
     pub timeout_key: Option<String>,
     pub file_db: String,
+    pub actions_db: String,
 }
 
 impl Server {

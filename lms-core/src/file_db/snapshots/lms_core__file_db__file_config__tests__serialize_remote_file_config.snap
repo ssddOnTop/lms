@@ -1,0 +1,5 @@
+---
+source: lms-core/src/file_db/file_config.rs
+expression: serialized
+---
+{"files":[{"name":"doc.txt","content":"Sample content"}],"metadata":{"title":"Data Collection","description":"Project files","timestamp":1625247600000}}

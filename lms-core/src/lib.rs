@@ -1,10 +1,12 @@
 #![allow(clippy::module_inception)]
 #![allow(clippy::mutable_key_type)]
 
+pub mod actions_db;
 pub mod app_ctx;
 pub mod authdb;
 pub mod blueprint;
 pub mod config;
+pub mod file_db;
 pub mod http;
 pub mod runtime;
 pub mod uid_gen;

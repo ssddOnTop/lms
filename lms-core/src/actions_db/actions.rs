@@ -1,12 +1,11 @@
+use crate::file_db::file_config::{FileHolder, InsertionInfo, Metadata};
+use crate::file_db::request_handler::FileRequestHandler;
+use crate::is_default;
 use anyhow::{anyhow, Result};
+use dashmap::DashMap;
 use http_body_util::Full;
 use lms_auth::auth::AuthProvider;
-use lms_core::is_default;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use dashmap::DashMap;
-use lms_file_db::file_config::{FileHolder, InsertionInfo};
-use lms_file_db::request_handler::FileRequestHandler;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActionsResult {
@@ -51,7 +50,7 @@ pub struct FileWrite {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ActionsActivity {
-    pub actions: DashMap<String, ActionsContent>,
+    pub actions: DashMap<String, Vec<ActionsContent>>,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -61,27 +60,47 @@ pub struct ActionsContent {
 }
 
 impl ActionsActivity {
-    pub async fn insert(&self, group_id: String, info: InsertionInfo, files: Vec<FileHolder>, file_request_handler: &FileRequestHandler) -> Result<()> {
-        let is_notif = files.is_empty();
-        let content_id = file_request_handler.insert(info, files).await;
-        self.actions.insert(
-            group_id.to_string(),
-            ActionsContent {
-                is_notif,
-                content_id: content_id.to_string(),
-            },
-        );
+    pub async fn insert(
+        &self,
+        group_id: String,
+        info: InsertionInfo,
+        files: Vec<FileHolder>,
+        file_request_handler: &FileRequestHandler,
+        is_notif: bool,
+    ) -> Result<()> {
+        let content_id = file_request_handler.insert(info, files).await?;
+        let new_action = ActionsContent {
+            is_notif,
+            content_id,
+        };
+
+        if let Some(mut actions) = self.get_actions(&group_id) {
+            actions.push(new_action);
+            self.actions.insert(group_id.to_string(), actions);
+        } else {
+            self.actions.insert(group_id.to_string(), vec![new_action]);
+        }
         Ok(())
     }
-    pub fn get(&self, group_id: &str) -> Option<&ActionsContent> {
-        self.actions.get(group_id).map(|x| x.value())
+    pub fn get_actions(&self, group_id: &str) -> Option<Vec<ActionsContent>> {
+        let val = self.actions.get(group_id)?;
+        Some(val.value().clone())
     }
-    /*
-     pub fn get_file(&self, group_id: &str) -> Option<&ActionsContent> {
-           let content_id = self.get(group_id);
-           todo!()
-       }
-    */
+    pub async fn get_config(
+        &self,
+        content_id: &str,
+        file_request_handler: &FileRequestHandler,
+    ) -> Result<Metadata> {
+        file_request_handler.get_metadata(content_id).await
+    }
+    pub async fn get_file_content(
+        &self,
+        content_id: &str,
+        file_name: &str,
+        file_request_handler: &FileRequestHandler,
+    ) -> Result<FileHolder> {
+        file_request_handler.get(content_id, file_name).await
+    }
 }
 
 impl ActionsResult {

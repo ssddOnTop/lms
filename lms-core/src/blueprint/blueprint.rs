@@ -27,6 +27,7 @@ pub struct Server {
     pub hostname: IpAddr,
     pub token: TOTP,
     pub file_db: String,
+    pub actions_db: String,
 }
 
 impl TryFrom<config::Server> for Server {
@@ -53,6 +54,7 @@ impl TryFrom<config::Server> for Server {
                 Secret::Raw(server.timeout_key.unwrap().as_bytes().to_vec()).to_bytes()?,
             )?,
             file_db: server.file_db,
+            actions_db: server.actions_db,
         })
     }
 }
@@ -68,6 +70,9 @@ impl TryFrom<config::config_module::Extensions> for Extensions {
             auth: ext
                 .auth
                 .ok_or_else(|| anyhow!("Auth Provider not found in config"))?,
+            // activity: ext
+            //     .actions
+            //     .ok_or_else(|| anyhow!("Actions not found in config"))?,
         })
     }
 }

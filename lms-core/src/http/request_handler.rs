@@ -1,3 +1,4 @@
+use crate::actions_db::actions_db::ActionsDB;
 use crate::app_ctx::AppContext;
 use crate::authdb::auth_db::AuthDB;
 use anyhow::{Context, Result};
@@ -13,10 +14,11 @@ pub async fn handle_request(
     req: Request<Incoming>,
     app_ctx: Arc<AppContext>,
     auth_db: Arc<RwLock<AuthDB>>,
+    actions_db: Arc<ActionsDB>,
 ) -> Result<Response<Full<Bytes>>> {
     match *req.method() {
         Method::GET => handle_get(req, app_ctx).await,
-        Method::POST => handle_post(req, app_ctx, auth_db).await,
+        Method::POST => handle_post(req, app_ctx, auth_db, actions_db).await,
         _ => not_found(),
     }
 }
@@ -37,6 +39,7 @@ async fn handle_post(
     req: Request<Incoming>,
     _app_ctx: Arc<AppContext>,
     auth_db: Arc<RwLock<AuthDB>>,
+    actions_db: Arc<ActionsDB>,
 ) -> Result<Response<Full<Bytes>>> {
     let path = req.uri().path().to_string();
     let body = into_bytes(req).await?;
@@ -47,6 +50,7 @@ async fn handle_post(
             .handle_request(body)
             .await
             .into_hyper_response(),
+        "/fs" => actions_db.handle_request(body).await.into_hyper_response(),
         &_ => not_found(),
     }
 }

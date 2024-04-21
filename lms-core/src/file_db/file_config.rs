@@ -1,10 +1,10 @@
 #![allow(unused)]
 
+use crate::authdb::auth_actors::Authority;
+use crate::is_default;
 use anyhow::Result;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
-use lms_core::authdb::auth_actors::Authority;
-use lms_core::is_default;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -19,17 +19,6 @@ pub struct InsertionInfo {
     pub description: String,
     pub timestamp: u128,
     pub end_time: Option<u128>,
-    pub authority: Authority,
-}
-struct FileHolderVisitor;
-
-impl<'de> Deserialize<'de> for FileHolder {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_struct("FileHolder", &["name", "content"], FileHolderVisitor)
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
@@ -53,7 +42,6 @@ pub struct Metadata {
     pub timestamp: u128,
     #[serde(default, skip_serializing_if = "is_default")]
     pub end_time: Option<u128>,
-    pub authority: Authority,
 }
 
 impl RemoteFileConfig {
@@ -65,7 +53,6 @@ impl RemoteFileConfig {
                 description: insertion_info.description,
                 timestamp: insertion_info.timestamp,
                 end_time: insertion_info.end_time,
-                authority: insertion_info.authority,
             },
         }
     }
@@ -86,7 +73,6 @@ impl LocalFileConfig {
                 description: insertion_info.description,
                 timestamp: insertion_info.timestamp,
                 end_time: insertion_info.end_time,
-                authority: insertion_info.authority,
             },
         }
     }
@@ -108,7 +94,7 @@ mod tests {
         let content = "Hello, world!";
         let file_holder = FileHolder {
             name: "example.txt".to_string(),
-            content: Vec::from(content),
+            content: content.to_string(),
         };
         let serialized = serde_json::to_string(&file_holder).unwrap();
         insta::assert_snapshot!(serialized);
@@ -118,14 +104,13 @@ mod tests {
     fn test_serialize_remote_file_config() {
         let files = vec![FileHolder {
             name: "doc.txt".to_string(),
-            content: Vec::from("Sample content"),
+            content: "Sample content".to_string(),
         }];
         let metadata = Metadata {
             title: "Data Collection".to_string(),
             description: "Project files".to_string(),
             timestamp: 1625247600000,
             end_time: None,
-            authority: Authority::Admin,
         };
         let config = RemoteFileConfig { files, metadata };
         let serialized = serde_json::to_string(&config).unwrap();
@@ -137,7 +122,7 @@ mod tests {
         let json = r#"{"name":"example.txt","content":"SGVsbG8sIHdvcmxkIQ=="}"#;
         let file_holder: FileHolder = serde_json::from_str(json).unwrap();
         assert_eq!(file_holder.name, "example.txt");
-        assert_eq!(file_holder.content, b"Hello, world!".to_vec());
+        assert_eq!(file_holder.content, "SGVsbG8sIHdvcmxkIQ==");
     }
 
     #[test]
@@ -154,16 +139,10 @@ mod tests {
         assert!(result.is_err());
     }
     #[test]
-    fn test_deserialize_unknown_field() {
-        let json = r#"{"name":"example.txt","content":"SGVsbG8sIHdvcmxkIQ==","extra":"data"}"#;
-        let result: Result<FileHolder, _> = serde_json::from_str(json);
-        assert!(result.is_err());
-    }
-    #[test]
     fn test_round_trip_file_holder() {
         let original = FileHolder {
             name: "roundtrip.txt".to_string(),
-            content: Vec::from("Round trip test"),
+            content: "Round trip test".to_string(),
         };
         let serialized = serde_json::to_string(&original).unwrap();
         let deserialized: FileHolder = serde_json::from_str(&serialized).unwrap();
