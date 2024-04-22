@@ -115,6 +115,11 @@ impl ActionsResult {
 }
 
 impl ActionsRequest {
+    pub fn into_serrequet(self) -> Result<String> {
+        let request =
+            serde_json::to_string(&self).map_err(|_| anyhow!("Unable to encode request"))?;
+        Ok(request)
+    }
     pub fn try_from_bytes<T: AsRef<[u8]>>(req: T) -> Result<Self> {
         let req = serde_json::from_slice::<Self>(req.as_ref())
             .map_err(|_| anyhow!("Unable to parse request"))?;
