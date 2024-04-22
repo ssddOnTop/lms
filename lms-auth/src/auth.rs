@@ -77,30 +77,21 @@ impl AuthRequest {
             signup_details,
         })
     }
-    pub fn into_encrypted_request(self, auth_provider: &AuthProvider) -> Result<String> {
-        let request = auth_provider
-            .encrypt_aes(serde_json::to_string(&self)?)
-            .map_err(|_| anyhow!("Unable to encrypt request"))?;
+    pub fn into_serrequet(self) -> Result<String> {
+        let request =
+            serde_json::to_string(&self).map_err(|_| anyhow!("Unable to encode request"))?;
         Ok(request)
     }
-    pub fn try_from_encrypted<T: AsRef<[u8]>>(
-        req: T,
-        auth_provider: &AuthProvider,
-    ) -> Result<Self> {
-        let req = auth_provider
-            .decrypt_aes(req)
-            .map_err(|_| anyhow!("Unable to decrypt request"))?;
-        let req =
-            serde_json::from_str::<Self>(&req).map_err(|_| anyhow!("Unable to parse request"))?;
+    pub fn try_from_bytes<T: AsRef<[u8]>>(req: T) -> Result<Self> {
+        let req = serde_json::from_slice::<Self>(req.as_ref())
+            .map_err(|_| anyhow!("Unable to parse request"))?;
         Ok(req)
     }
 }
 
 impl AuthResult {
-    pub fn try_from_encrypted_response(aes_key: &[u8], response: &str) -> Result<Self> {
-        let response =
-            decrypt_aes(aes_key, response).map_err(|_| anyhow!("Unable to decrypt response"))?;
-        let result = serde_json::from_str::<AuthResult>(&response)?;
+    pub fn try_from_ser_response(response: &str) -> Result<Self> {
+        let result = serde_json::from_str::<AuthResult>(response)?;
         Ok(result)
     }
     pub fn into_hyper_response(self) -> Result<hyper::Response<Full<bytes::Bytes>>> {
@@ -128,7 +119,7 @@ impl AuthProvider {
 
     pub async fn authenticate(&self, username: &str, password: &str) -> Result<AuthSucc> {
         let request = AuthRequest::new(username, password, None)?;
-        let request = request.into_encrypted_request(self)?;
+        let request = request.into_serrequet()?;
 
         let response = reqwest::Client::new()
             .post(self.auth_db_path.clone())
@@ -136,8 +127,7 @@ impl AuthProvider {
             .send()
             .await?;
 
-        let result =
-            AuthResult::try_from_encrypted_response(&self.aes_key, &response.text().await?)?;
+        let result = AuthResult::try_from_ser_response(&response.text().await?)?;
 
         if let Some(err) = result.error {
             return Err(anyhow::anyhow!(err.message));
@@ -217,7 +207,7 @@ mod tests {
         let provider = AuthProvider::init(server_url, totp, aes_key)?;
 
         let req = AuthRequest::new("user", "pass", None)?;
-        let req = req.into_encrypted_request(&provider)?;
+        let req = req.into_serrequet()?;
         let resp_json = json!({
             "success": {
                 "name": "John Doe",
@@ -225,8 +215,8 @@ mod tests {
             }
         });
 
-        let resp = encrypt_aes(&provider.aes_key, &serde_json::to_string(&resp_json)?)?;
-
+        // let resp = encrypt_aes(&provider.aes_key, &serde_json::to_string(&resp_json)?)?;
+        let resp = serde_json::to_string(&resp_json)?;
         let m = server.mock(|when, then| {
             when.method(httpmock::Method::POST).path("/").body(req);
 

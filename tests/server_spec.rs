@@ -233,22 +233,22 @@ mod server_spec {
                 TestHttp {
                     url: "http://localhost:19194/auth".to_string(),
                     method: reqwest::Method::POST,
-                    body: auth_req.into_encrypted_request(auth)?,
+                    body: auth_req.into_serrequet()?,
                 },
                 TestHttp {
                     url: "http://localhost:19194/auth".to_string(),
                     method: reqwest::Method::POST,
-                    body: auth_req_invalid_authority.into_encrypted_request(auth)?,
+                    body: auth_req_invalid_authority.into_serrequet()?,
                 },
                 TestHttp {
                     url: "http://localhost:19194/auth".to_string(),
                     method: reqwest::Method::POST,
-                    body: auth_req_no_such_user.into_encrypted_request(auth)?,
+                    body: auth_req_no_such_user.into_serrequet()?,
                 },
                 TestHttp {
                     url: "http://localhost:19194/auth".to_string(),
                     method: reqwest::Method::POST,
-                    body: auth_req_invalid_pass.into_encrypted_request(auth)?,
+                    body: auth_req_invalid_pass.into_serrequet()?,
                 },
             ],
             config_module,

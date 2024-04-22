@@ -44,8 +44,7 @@ impl ActionsDB {
         }
     }
     pub async fn handle_request(&self, body: bytes::Bytes) -> ActionsResult {
-        let auth_provider = &self.app_context.blueprint.extensions.auth;
-        let actions_request = ActionsRequest::try_from_encrypted(&body, auth_provider);
+        let actions_request = ActionsRequest::try_from_bytes(&body);
         match actions_request {
             Ok(actions_request) => match verify_token(&actions_request.token, &self.app_context) {
                 Ok(_) => {
@@ -283,7 +282,7 @@ mod tests {
         let token = format!("{}_{}", "username", totp.generate_current()?);
         let token = app_context.blueprint.extensions.auth.encrypt_aes(token)?;
 
-        let auth = app_context.blueprint.extensions.auth.clone();
+        let _auth = app_context.blueprint.extensions.auth.clone();
 
         let actions_db = ActionsDB::init(Arc::new(app_context)).await?;
 
@@ -302,7 +301,7 @@ mod tests {
             write: Some(write),
         };
         let actions_request = serde_json::to_string(&actions_request)?;
-        let actions_request = auth.encrypt_aes(actions_request)?;
+        // let actions_request = auth.encrypt_aes(actions_request)?;
 
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
@@ -336,7 +335,7 @@ mod tests {
             write: None,
         };
         let actions_request = serde_json::to_string(&actions_request)?;
-        let actions_request = auth.encrypt_aes(actions_request)?;
+        // let actions_request = auth.encrypt_aes(actions_request)?;
 
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
@@ -358,7 +357,7 @@ mod tests {
         };
 
         let actions_request = serde_json::to_string(&actions_request)?;
-        let actions_request = auth.encrypt_aes(actions_request)?;
+        // let actions_request = auth.encrypt_aes(actions_request)?;
 
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
@@ -389,7 +388,7 @@ mod tests {
             write: Some(write),
         };
         let actions_request = serde_json::to_string(&actions_request)?;
-        let actions_request = auth.encrypt_aes(actions_request)?;
+        // let actions_request = auth.encrypt_aes(actions_request)?;
 
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
@@ -438,7 +437,7 @@ mod tests {
         let token = format!("{}_{}", "username", totp.generate_current()?);
         let token = app_context.blueprint.extensions.auth.encrypt_aes(token)?;
 
-        let auth = app_context.blueprint.extensions.auth.clone();
+        let _auth = app_context.blueprint.extensions.auth.clone();
 
         let actions_db = ActionsDB::init(Arc::new(app_context)).await?;
 
@@ -463,7 +462,7 @@ mod tests {
         };
 
         let actions_request = serde_json::to_string(&actions_request)?;
-        let actions_request = auth.encrypt_aes(actions_request)?;
+        // let actions_request = auth.encrypt_aes(actions_request)?;
 
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
@@ -502,7 +501,7 @@ mod tests {
             write: None,
         };
         let actions_request = serde_json::to_string(&actions_request)?;
-        let actions_request = auth.encrypt_aes(actions_request)?;
+        // let actions_request = auth.encrypt_aes(actions_request)?;
 
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
@@ -560,14 +559,14 @@ mod tests {
         };
 
         let actions_request = serde_json::to_string(&actions_request).unwrap();
-        let actions_request = actions_db
-            .app_context
-            .blueprint
-            .extensions
-            .auth
-            .encrypt_aes(actions_request)
-            .unwrap();
-
+        /*        let actions_request = actions_db
+                    .app_context
+                    .blueprint
+                    .extensions
+                    .auth
+                    .encrypt_aes(actions_request)
+                    .unwrap();
+        */
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
             .await;
@@ -604,13 +603,13 @@ mod tests {
         };
 
         let actions_request = serde_json::to_string(&actions_request).unwrap();
-        let actions_request = actions_db
-            .app_context
-            .blueprint
-            .extensions
-            .auth
-            .encrypt_aes(actions_request)
-            .unwrap();
+        // let actions_request = actions_db
+        //     .app_context
+        //     .blueprint
+        //     .extensions
+        //     .auth
+        //     .encrypt_aes(actions_request)
+        //     .unwrap();
 
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))

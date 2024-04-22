@@ -22,8 +22,8 @@ impl AuthDB {
         Ok(Self { users, app_context })
     }
     pub async fn handle_request(&mut self, body: bytes::Bytes) -> AuthResult {
-        let auth_provider = &self.app_context.blueprint.extensions.auth;
-        let auth_request = AuthRequest::try_from_encrypted(&body, auth_provider);
+        let _auth_provider = &self.app_context.blueprint.extensions.auth;
+        let auth_request = AuthRequest::try_from_bytes(&body);
 
         match auth_request {
             Ok(auth_request) => {
@@ -319,12 +319,14 @@ mod tests {
 
         let auth_req = AuthRequest::new("newbie", "newbie", None)?;
 
-        let encrypted_req = auth_db
-            .app_context
-            .blueprint
-            .extensions
-            .auth
-            .encrypt_aes(serde_json::to_string(&auth_req)?)?;
+        // let encrypted_req = auth_db
+        //     .app_context
+        //     .blueprint
+        //     .extensions
+        //     .auth
+        //     .encrypt_aes(serde_json::to_string(&auth_req)?)?;
+        let encrypted_req = serde_json::to_string(&auth_req)?;
+
         let result = auth_db
             .handle_request(bytes::Bytes::from(encrypted_req))
             .await;
@@ -356,12 +358,13 @@ mod tests {
 
         let auth_req = AuthRequest::new("newbie", "newbie", Some(signup))?;
 
-        let encrypted_req = auth_db
-            .app_context
-            .blueprint
-            .extensions
-            .auth
-            .encrypt_aes(serde_json::to_string(&auth_req)?)?;
+        /*        let encrypted_req = auth_db
+        .app_context
+        .blueprint
+        .extensions
+        .auth
+        .encrypt_aes(serde_json::to_string(&auth_req)?)?;*/
+        let encrypted_req = serde_json::to_string(&auth_req)?;
         let result = auth_db
             .handle_request(bytes::Bytes::from(encrypted_req))
             .await;

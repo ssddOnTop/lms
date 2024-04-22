@@ -4,7 +4,7 @@ use crate::is_default;
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use http_body_util::Full;
-use lms_auth::auth::AuthProvider;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -115,15 +115,9 @@ impl ActionsResult {
 }
 
 impl ActionsRequest {
-    pub fn try_from_encrypted<T: AsRef<[u8]>>(
-        req: T,
-        auth_provider: &AuthProvider,
-    ) -> Result<Self> {
-        let req = auth_provider
-            .decrypt_aes(req)
-            .map_err(|_| anyhow!("Unable to decrypt request"))?;
-        let req =
-            serde_json::from_str::<Self>(&req).map_err(|_| anyhow!("Unable to parse request"))?;
+    pub fn try_from_bytes<T: AsRef<[u8]>>(req: T) -> Result<Self> {
+        let req = serde_json::from_slice::<Self>(req.as_ref())
+            .map_err(|_| anyhow!("Unable to parse request"))?;
         Ok(req)
     }
 }
