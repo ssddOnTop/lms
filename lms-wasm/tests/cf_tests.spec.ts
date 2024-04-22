@@ -28,7 +28,7 @@ describe("fetch", () => {
     let body = await resp.json()
     let expected = {
       "error": {
-        "message": "Unable to decrypt request"
+        "message": "Unable to parse request"
       },
       "code": 500
     }
