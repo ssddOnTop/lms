@@ -60,7 +60,7 @@ impl ActionsDB {
                         }
                     }
                 }
-                Err(e) => actions_error(format!("Invalid token: {}", e)),
+                Err(e) => actions_error(e.to_string()),
             },
             Err(e) => actions_error(e.to_string()),
         }
