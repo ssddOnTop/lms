@@ -549,14 +549,6 @@ mod tests {
         };
 
         let actions_request = serde_json::to_string(&actions_request).unwrap();
-        /*        let actions_request = actions_db
-                    .app_context
-                    .blueprint
-                    .extensions
-                    .auth
-                    .encrypt_aes(actions_request)
-                    .unwrap();
-        */
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
             .await;

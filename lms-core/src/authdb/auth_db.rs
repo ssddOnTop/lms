@@ -22,7 +22,6 @@ impl AuthDB {
         Ok(Self { users, app_context })
     }
     pub async fn handle_request(&mut self, body: bytes::Bytes) -> AuthResult {
-        let _auth_provider = &self.app_context.blueprint.extensions.auth;
         let auth_request = AuthRequest::try_from_bytes(&body);
 
         match auth_request {
