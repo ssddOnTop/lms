@@ -16,13 +16,13 @@
   },
   "batches": [
     {
-      "courses": ["course1"],
-      "id": "batch1"
+      "courses": ["PSD"],
+      "id": "22BCS"
     }
   ],
   "courses": {
-    "course1": {
-      "name": "Course 1"
+    "PSD": {
+      "name": "Principles of Software Development"
     }
   }
 }
