@@ -60,7 +60,7 @@ impl ActionsDB {
                         }
                     }
                 }
-                Err(e) => actions_error(format!("Invalid token: {}", e)),
+                Err(e) => actions_error(e.to_string()),
             },
             Err(e) => actions_error(e.to_string()),
         }
@@ -549,14 +549,6 @@ mod tests {
         };
 
         let actions_request = serde_json::to_string(&actions_request).unwrap();
-        /*        let actions_request = actions_db
-                    .app_context
-                    .blueprint
-                    .extensions
-                    .auth
-                    .encrypt_aes(actions_request)
-                    .unwrap();
-        */
         let actions_result = actions_db
             .handle_request(bytes::Bytes::from(actions_request))
             .await;
@@ -564,7 +556,7 @@ mod tests {
         assert_eq!(actions_result.status, 500);
         let decoded_msg =
             String::from_utf8(BASE64_STANDARD.decode(actions_result.message).unwrap()).unwrap();
-        assert_eq!("Invalid token: Unable to decrypt token", decoded_msg);
+        assert_eq!("Unable to decrypt token", decoded_msg);
     }
 
     #[tokio::test]
