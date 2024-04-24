@@ -199,7 +199,9 @@ mod tests {
     use crate::authdb::auth_actors::{Authority, User, Users};
     use crate::authdb::auth_db::{user_entry, AuthDB};
     use crate::blueprint::Blueprint;
+    use crate::config::batch_info::BatchInfo;
     use crate::config::config_module::ConfigModule;
+    use crate::config::course_info::CourseInfo;
 
     fn start_mock_server() -> httpmock::MockServer {
         httpmock::MockServer::start()
@@ -221,6 +223,17 @@ mod tests {
             hash_256(&module.config.auth.aes_key).clone(),
         )?;
         module.extensions.auth = Some(auth);
+        module.courses.insert(
+            "PSD".to_string(),
+            CourseInfo {
+                name: "Principles of Software Development".to_string(),
+                description: Some("Idk".to_string()),
+            },
+        );
+        module.batches.push(BatchInfo {
+            id: "22BCS".to_string(),
+            courses: vec!["PSD".to_string()],
+        });
 
         let blueprint = Blueprint::try_from(module)?;
         let runtime = crate::runtime::tests::init();
@@ -255,6 +268,8 @@ mod tests {
 
         let auth_req = AuthRequest::new("new", "bie", Some(signup))?;
         let result = auth_db.signup(auth_req).await;
+
+        println!("{:?}", result);
 
         assert!(result.success.is_some());
         let succ = result.success.unwrap();

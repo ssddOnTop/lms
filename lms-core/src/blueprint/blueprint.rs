@@ -177,11 +177,11 @@ fn validate_config(
 #[cfg(test)]
 mod tests {
     use lms_auth::auth::AuthProvider;
+    use totp_rs::{Algorithm, Secret, TOTP};
 
     use crate::authdb::auth_actors::Users;
+    use crate::blueprint::blueprint::validate_config;
     use crate::config::config_module::{ConfigModule, Extensions};
-
-    use super::*;
 
     #[test]
     fn test_validate_config_fail() {
