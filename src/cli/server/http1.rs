@@ -33,8 +33,13 @@ pub async fn run(
                                 let sc = sc.clone();
                                 async move {
                                     let req = http::request::Request::from_hyper(req).await?;
-                                    handle_request(req, sc.auth_db.clone(), sc.actions_db.clone())
-                                        .await
+                                    handle_request(
+                                        req,
+                                        sc.app_ctx.clone(),
+                                        sc.auth_db.clone(),
+                                        sc.actions_db.clone(),
+                                    )
+                                    .await
                                 }
                             }),
                         )

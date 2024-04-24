@@ -46,4 +46,10 @@ pub enum Command {
         #[arg(long)]
         print: Option<bool>,
     },
+    Delete {
+        #[arg(required = true)]
+        config_path: String,
+        #[arg(short, long)]
+        username: String,
+    },
 }

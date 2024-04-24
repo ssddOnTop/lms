@@ -53,6 +53,16 @@ impl AuthDB {
                 let authority = Authority::from_int(signup_details.authority);
                 match authority {
                     Ok(authority) => {
+                        if authority.eq(&Authority::Student) && signup_details.batch.is_none() {
+                            return auth_err(
+                                "Selected authority is student but selected branch is null",
+                            );
+                        }
+                        if let Some(batch) = signup_details.batch.as_ref() {
+                            if !self.app_context.blueprint.batch_info.contains(batch) {
+                                return auth_err("Invalid batch selected");
+                            }
+                        }
                         let user = User {
                             username: req.username,
                             name: signup_details.name.clone(),
@@ -189,7 +199,9 @@ mod tests {
     use crate::authdb::auth_actors::{Authority, User, Users};
     use crate::authdb::auth_db::{user_entry, AuthDB};
     use crate::blueprint::Blueprint;
+    use crate::config::batch_info::BatchInfo;
     use crate::config::config_module::ConfigModule;
+    use crate::config::course_info::CourseInfo;
 
     fn start_mock_server() -> httpmock::MockServer {
         httpmock::MockServer::start()
@@ -211,6 +223,17 @@ mod tests {
             hash_256(&module.config.auth.aes_key).clone(),
         )?;
         module.extensions.auth = Some(auth);
+        module.courses.insert(
+            "PSD".to_string(),
+            CourseInfo {
+                name: "Principles of Software Development".to_string(),
+                description: Some("Idk".to_string()),
+            },
+        );
+        module.batches.push(BatchInfo {
+            id: "22BCS".to_string(),
+            courses: vec!["PSD".to_string()],
+        });
 
         let blueprint = Blueprint::try_from(module)?;
         let runtime = crate::runtime::tests::init();
@@ -245,6 +268,8 @@ mod tests {
 
         let auth_req = AuthRequest::new("new", "bie", Some(signup))?;
         let result = auth_db.signup(auth_req).await;
+
+        println!("{:?}", result);
 
         assert!(result.success.is_some());
         let succ = result.success.unwrap();

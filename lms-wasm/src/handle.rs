@@ -18,6 +18,7 @@ lazy_static! {
 }
 
 struct WasmContext {
+    pub app_context: Arc<AppContext>,
     pub auth_db: Arc<tokio::sync::RwLock<AuthDB>>,
     pub actions_db: Arc<ActionsDB>,
 }
@@ -40,7 +41,13 @@ pub async fn fetch(
         Ok(app_ctx) => app_ctx,
         Err(e) => return to_response(e).await,
     };
-    let resp = handle_request(req, wasm_ctx.auth_db.clone(), wasm_ctx.actions_db.clone()).await?;
+    let resp = handle_request(
+        req,
+        wasm_ctx.app_context.clone(),
+        wasm_ctx.auth_db.clone(),
+        wasm_ctx.actions_db.clone(),
+    )
+    .await?;
     to_response(resp).await
 }
 
@@ -131,10 +138,11 @@ async fn get_app_ctx(
     let auth_db = AuthDB::init(app_ctx.clone()).await?;
     let auth_db = Arc::new(tokio::sync::RwLock::new(auth_db));
 
-    let actions_db = ActionsDB::init(app_ctx).await?;
+    let actions_db = ActionsDB::init(app_ctx.clone()).await?;
     let actions_db = Arc::new(actions_db);
 
     let wasm_ctx = WasmContext {
+        app_context: app_ctx,
         auth_db,
         actions_db,
     };

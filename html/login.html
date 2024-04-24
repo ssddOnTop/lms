@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="index.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login and Signup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-toggle {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .form-toggle button {
+            padding: 10px 20px;
+            background-color: #ddd;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .form-toggle button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .login-form,
+        .signup-form {
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        button[type="submit"] {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="form-toggle">
+        <button id="loginToggle" class="active">Login</button>
+        <button id="signupToggle">Signup</button>
+    </div>
+    <div class="login-form">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <input type="text" placeholder="Username" id="loginUsername" required>
+            <input type="password" placeholder="Password" id="loginPassword" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+    <div class="signup-form hidden">
+        <h2>Signup</h2>
+        <form id="signupForm">
+            <input type="text" placeholder="Username" id="signupUsername" required>
+            <input type="password" placeholder="Password" id="signupPassword" required>
+            <input type="text" placeholder="Admin ID" id="adminId">
+            <input type="password" placeholder="Admin Password" id="adminPassword">
+            <input type="text" placeholder="Name" id="name" required>
+            <select id="authorityDropdown"></select>
+            <select id="batchDropdown" style="display: none;"></select>
+            <button type="submit">Signup</button>
+        </form>
+    </div>
+</div>
+
+<script type="text/javascript">
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const loginToggle = document.getElementById('loginToggle');
+    const signupToggle = document.getElementById('signupToggle');
+    const loginFormContainer = document.querySelector('.login-form');
+    const signupFormContainer = document.querySelector('.signup-form');
+
+    loginToggle.addEventListener('click', () => {
+        loginFormContainer.classList.remove('hidden');
+        signupFormContainer.classList.add('hidden');
+        loginToggle.classList.add('active');
+        signupToggle.classList.remove('active');
+    });
+
+    signupToggle.addEventListener('click', () => {
+        signupFormContainer.classList.remove('hidden');
+        loginFormContainer.classList.add('hidden');
+        signupToggle.classList.add('active');
+        loginToggle.classList.remove('active');
+    });
+
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        login().then(() => {
+            console.log('Logged in');
+        }).catch((err) => {
+            console.error(err);
+        });
+    });
+
+    signupForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const signupUsername = document.getElementById('signupUsername').value;
+        const signupPassword = document.getElementById('signupPassword').value;
+        const adminId = document.getElementById('adminId').value;
+        const adminPassword = document.getElementById('adminPassword').value;
+        const name = document.getElementById('name').value;
+        const authority = document.getElementById('authorityDropdown');
+        const batches = document.getElementById('batchDropdown');
+
+
+        signup(signupUsername, signupPassword, adminId, adminPassword, name, authority.selectedIndex, batches.value).then(() => {
+            console.log('Signed up');
+        }).catch((err) => {
+            console.error(err);
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropdown = document.getElementById('batchDropdown');
+
+        fetch('/getbatches')
+            .then(response => response.json())
+            .then(data => {
+                if (data && Array.isArray(data)) {
+                    data.forEach(batch => {
+                        const option = document.createElement('option');
+                        option.value = batch;
+                        option.textContent = batch;
+                        dropdown.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching batches:', error));
+
+        const authority = document.getElementById('authorityDropdown');
+        fetch('/getauthority')
+            .then(response => response.json())
+            .then(data => {
+                if (data && Array.isArray(data)) {
+                    data.forEach(batch => {
+                        const option = document.createElement('option');
+                        option.value = batch;
+                        option.textContent = batch;
+                        authority.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching authorities:', error));
+
+        authority.addEventListener('change', function() {
+            if (this.value === 'Student') {
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        });
+    });
+
+</script>
+</body>
+</html>
