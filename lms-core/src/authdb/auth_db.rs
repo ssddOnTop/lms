@@ -6,6 +6,7 @@ use reqwest::{Body, Method, Request};
 use serde_json::json;
 
 use lms_auth::auth::{AuthError, AuthRequest, AuthResult, AuthSucc};
+use lms_auth::local_crypto::hash_256;
 
 use crate::app_ctx::AppContext;
 use crate::authdb::auth_actors::{Authority, User, Users};
@@ -66,7 +67,7 @@ impl AuthDB {
                         let user = User {
                             username: req.username,
                             name: signup_details.name.clone(),
-                            password: req.password,
+                            password: hash_256(req.password),
                             authority,
                             batch: signup_details.batch,
                         };
@@ -163,7 +164,7 @@ pub async fn user_entry(app_context: &AppContext, users: Users) -> Result<Users>
 
 fn verify(username: &str, pw: &str, users: &Users) -> Result<User> {
     let user = users.get(username).context("No such user found")?;
-    if user.password.eq(pw) {
+    if user.password.eq(&hash_256(pw)) {
         Ok(user)
     } else {
         Err(anyhow!("Invalid password for user: {}", username))
