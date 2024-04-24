@@ -14,7 +14,7 @@ use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
 lazy_static! {
-    static ref APP_CTX: RwLock<Option<(String, Arc<WasmContext>)>> = RwLock::new(None);
+    static ref APP_CTX: RwLock<Option<Arc<WasmContext>>> = RwLock::new(None);
 }
 
 struct WasmContext {
@@ -57,6 +57,9 @@ async fn get_app_ctx(
     env: Rc<worker::Env>,
     req: &Request,
 ) -> anyhow::Result<Result<Arc<WasmContext>, hyper::Response<Full<bytes::Bytes>>>> {
+    if let Some(app_ctx) = read_app_ctx() {
+        return Ok(Ok(app_ctx));
+    }
     // Read context from cache
     let file_path = req
         .url
@@ -64,14 +67,14 @@ async fn get_app_ctx(
         .and_then(|x| serde_qs::from_str::<HashMap<String, String>>(x).ok())
         .and_then(|x| x.get("config").cloned());
 
-    if let Some(file_path) = &file_path {
+    /*    if let Some(file_path) = &file_path {
         if let Some(app_ctx) = read_app_ctx() {
             if app_ctx.0.eq(file_path) {
                 log::info!("Using cached application context");
                 return Ok(Ok(app_ctx.clone().1));
             }
         }
-    }
+    }*/
 
     let config_path = match file_path {
         Some(path) => path,
@@ -83,15 +86,18 @@ async fn get_app_ctx(
     };
 
     let runtime = runtime::init(env)?;
-
-    /*    runtime.file.write("config.json", r#"
+    /*
+        runtime.file.write("config.json", r#"
             {
+              "$schema": "../generated/.lmsrc.schema.json",
               "server": {
                 "port": 19194,
                 "host": "0.0.0.0",
                 "workers": 4,
-                "actionsDb": "./actions",
-                "fileDb": "./files"
+                "actionsDb": "./actions.json",
+                "fileDb": "./files",
+                "timeoutKey": "serverTimeoutKey",
+                "requestTimeout": 30
               },
               "auth": {
                 "authDbPath": "./auth",
@@ -102,20 +108,20 @@ async fn get_app_ctx(
               },
               "batches": [
                 {
-                  "courses": ["course1"],
-                  "id": "batch1"
+                  "courses": ["PSD"],
+                  "id": "22BCS"
                 }
               ],
               "courses": {
-                "course1": {
-                  "name": "Course 1"
+                "PSD": {
+                  "name": "Principles of Software Development"
                 }
               }
-        }
+            }
     "#.as_bytes()).await?;*/
 
     let reader = ConfigReader::init(runtime.clone());
-    let module = match reader.read(config_path).await {
+    let module = match reader.read(config_path.clone()).await {
         Ok(module) => module,
         Err(e) => {
             return Ok(Err(hyper_resp(format!("Failed to read config: {}", e))));
@@ -146,8 +152,10 @@ async fn get_app_ctx(
         auth_db,
         actions_db,
     };
+    let wasm_ctx = Arc::new(wasm_ctx);
 
-    Ok(Ok(Arc::new(wasm_ctx)))
+    *APP_CTX.write().unwrap() = Some(wasm_ctx.clone());
+    Ok(Ok(wasm_ctx))
 }
 
 fn hyper_resp<T: AsRef<str>>(e: T) -> hyper::Response<Full<bytes::Bytes>> {
@@ -156,6 +164,6 @@ fn hyper_resp<T: AsRef<str>>(e: T) -> hyper::Response<Full<bytes::Bytes>> {
     response
 }
 
-fn read_app_ctx() -> Option<(String, Arc<WasmContext>)> {
+fn read_app_ctx() -> Option<Arc<WasmContext>> {
     APP_CTX.read().unwrap().clone()
 }
