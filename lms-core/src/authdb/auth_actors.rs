@@ -1,9 +1,10 @@
 use anyhow::anyhow;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub enum Authority {
     Admin,
     Faculty,
@@ -59,6 +60,9 @@ impl Users {
     }
     pub fn insert(&mut self, user: User) {
         self.users.insert(user.username.clone(), user);
+    }
+    pub fn delete(&mut self, username: &str) {
+        self.users.remove(username);
     }
 }
 

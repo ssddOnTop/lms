@@ -68,7 +68,24 @@ async fn run(cli: Cli, runtime: TargetRuntime) -> anyhow::Result<()> {
                 .await
                 .map_err(|e| anyhow::anyhow!("Unable to create user with error: {}", e))?;
         }
+        Command::Delete {
+            config_path,
+            username,
+        } => {
+            let mut config_module = config_reader.read(config_path).await?;
+            if let Some(users) = config_module.extensions.users.as_mut() {
+                users.delete(&username);
+            }
+
+            let blueprint = Blueprint::try_from(config_module)?;
+            let users = blueprint.extensions.users.clone();
+            let app_context = AppContext { blueprint, runtime };
+            user_entry(&app_context, users)
+                .await
+                .map_err(|e| anyhow::anyhow!("Unable to create user with error: {}", e))?;
+        }
     }
+
     Ok(())
 }
 

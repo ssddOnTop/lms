@@ -53,6 +53,16 @@ impl AuthDB {
                 let authority = Authority::from_int(signup_details.authority);
                 match authority {
                     Ok(authority) => {
+                        if authority.eq(&Authority::Student) && signup_details.batch.is_none() {
+                            return auth_err(
+                                "Selected authority is student but selected branch is null",
+                            );
+                        }
+                        if let Some(batch) = signup_details.batch.as_ref() {
+                            if !self.app_context.blueprint.batch_info.contains(batch) {
+                                return auth_err("Invalid batch selected");
+                            }
+                        }
                         let user = User {
                             username: req.username,
                             name: signup_details.name.clone(),

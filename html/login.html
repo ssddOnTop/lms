@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="index.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login and Signup</title>
@@ -106,6 +107,8 @@
             <input type="text" placeholder="Admin ID" id="adminId">
             <input type="password" placeholder="Admin Password" id="adminPassword">
             <input type="text" placeholder="Name" id="name" required>
+            <select id="authorityDropdown"></select>
+            <select id="batchDropdown" style="display: none;"></select>
             <button type="submit">Signup</button>
         </form>
     </div>
@@ -135,11 +138,11 @@
 
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const loginUsername = document.getElementById('loginUsername').value;
-        const loginPassword = document.getElementById('loginPassword').value;
-
-
-        console.log('Login:', loginUsername, loginPassword);
+        login().then(() => {
+            console.log('Logged in');
+        }).catch((err) => {
+            console.error(err);
+        });
     });
 
     signupForm.addEventListener('submit', (e) => {
@@ -149,9 +152,58 @@
         const adminId = document.getElementById('adminId').value;
         const adminPassword = document.getElementById('adminPassword').value;
         const name = document.getElementById('name').value;
+        const authority = document.getElementById('authorityDropdown');
+        const batches = document.getElementById('batchDropdown');
 
-        console.log('Signup:', signupUsername, signupPassword, adminId, adminPassword, name);
+
+        signup(signupUsername, signupPassword, adminId, adminPassword, name, authority.selectedIndex, batches.value).then(() => {
+            console.log('Signed up');
+        }).catch((err) => {
+            console.error(err);
+        });
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropdown = document.getElementById('batchDropdown');
+
+        fetch('/getbatches')
+            .then(response => response.json())
+            .then(data => {
+                if (data && Array.isArray(data)) {
+                    data.forEach(batch => {
+                        const option = document.createElement('option');
+                        option.value = batch;
+                        option.textContent = batch;
+                        dropdown.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching batches:', error));
+
+        const authority = document.getElementById('authorityDropdown');
+        fetch('/getauthority')
+            .then(response => response.json())
+            .then(data => {
+                if (data && Array.isArray(data)) {
+                    data.forEach(batch => {
+                        const option = document.createElement('option');
+                        option.value = batch;
+                        option.textContent = batch;
+                        authority.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching authorities:', error));
+
+        authority.addEventListener('change', function() {
+            if (this.value === 'Student') {
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        });
+    });
+
 </script>
 </body>
 </html>

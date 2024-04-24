@@ -3,16 +3,17 @@ use std::net::IpAddr;
 use anyhow::anyhow;
 use totp_rs::{Algorithm, Secret, TOTP};
 
-use crate::authdb::auth_actors::{Authority, Users};
-use crate::config;
 use lms_auth::auth::AuthProvider;
 
+use crate::authdb::auth_actors::{Authority, Users};
+use crate::config;
 use crate::config::config_module::ConfigModule;
 
 #[derive(Debug, Clone)]
 pub struct Blueprint {
     pub server: Server,
     pub extensions: Extensions,
+    pub batch_info: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -79,6 +80,7 @@ impl TryFrom<ConfigModule> for Blueprint {
 
     fn try_from(mut config_module: ConfigModule) -> Result<Self, Self::Error> {
         let cfg = config_module.clone();
+        let batch_info = config_module.batches.iter().map(|v| v.id.clone()).collect();
 
         config_module.config.server.timeout_key =
             Some(config_module.config.server.timeout_key.unwrap_or(format!(
@@ -92,6 +94,7 @@ impl TryFrom<ConfigModule> for Blueprint {
 
         Ok(Self {
             server,
+            batch_info,
             extensions: Extensions::try_from(config_module.extensions)?,
         })
     }
@@ -173,10 +176,12 @@ fn validate_config(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use lms_auth::auth::AuthProvider;
+
     use crate::authdb::auth_actors::Users;
     use crate::config::config_module::{ConfigModule, Extensions};
-    use lms_auth::auth::AuthProvider;
+
+    use super::*;
 
     #[test]
     fn test_validate_config_fail() {
